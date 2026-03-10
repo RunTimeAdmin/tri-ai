@@ -1,0 +1,12 @@
+data: {"type":"debate-start","topic":"Will AI replace software developers by 2030?","provider":"gemini","model":"gemini-2.0-flash"}
+
+data: {"type":"phase-start","phase":1,"title":"Independent Analysis","description":"Each agent independently analyzes the topic..."}
+
+data: {"type":"agent-start","phase":1,"agent":"cipher"}
+
+data: {"type":"agent-start","phase":1,"agent":"nova"}
+
+data: {"type":"agent-start","phase":1,"agent":"prism"}
+
+data: {"type":"error","message":"gemini API error (403): [{\n  \"error\": {\n    \"code\": 403,\n    \"message\": \"Permission denied: Consumer 'api_key:AIzaSyAHdELVexMWpm-wAPe9PkTikgKUHPDf9j8' has been suspended.\",\n    \"status\": \"PERMISSION_DENIED\",\n    \"details\": [\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.ErrorInfo\",\n        \"reason\": \"CONSUMER_SUSPENDED\",\n        \"domain\": \"googleapis.com\",\n        \"metadata\": {\n          \"service\": \"generativelanguage.googleapis.com\",\n          \"containerInfo\": \"api_key:AIzaSyAHdELVexMWpm-wAPe9PkTikgKUHPDf9j8\",\n          \"consumer\": \"projects/833279940794\"\n        }\n      },\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.LocalizedMessage\",\n        \"locale\": \"en-US\",\n        \"message\": \"Permission denied: Consumer 'api_key:AIzaSyAHdELVexMWpm-wAPe9PkTikgKUHPDf9j8' has been suspended.\"\n      }\n    ]\n  }\n}\n]"}
+

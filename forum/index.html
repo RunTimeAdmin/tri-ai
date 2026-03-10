@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Triad Forum — Dialectical Discussion System</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔺</text></svg>">
+<script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="app-logo">
+        <div class="logo-icon">🔺</div>
+        <h1 class="app-title">AI Triad Forum</h1>
+      </div>
+      <p class="app-subtitle">Three AI agents with opposing perspectives debate your topic through structured dialectical reasoning — surfacing biases, challenging assumptions, and converging on balanced truth.</p>
+    </header>
+
+    <!-- Agent Overview Cards -->
+    <div class="agents-overview">
+      <div class="agent-card cipher">
+        <div class="agent-avatar">
+          🔴
+          <div class="agent-status" id="status-cipher"></div>
+        </div>
+        <div>
+          <div class="agent-name">CIPHER</div>
+          <div class="agent-role">The Skeptic · Critical Analyst</div>
+          <p class="agent-desc">Challenges assumptions, hunts for logical flaws, identifies hidden risks and biases. The red-team auditor.</p>
+        </div>
+      </div>
+      <div class="agent-card nova">
+        <div class="agent-avatar">
+          🟢
+          <div class="agent-status" id="status-nova"></div>
+        </div>
+        <div>
+          <div class="agent-name">NOVA</div>
+          <div class="agent-role">The Advocate · Constructive Optimist</div>
+          <p class="agent-desc">Sees potential and opportunity, builds constructive arguments, defends promising possibilities. The blue-sky thinker.</p>
+        </div>
+      </div>
+      <div class="agent-card prism">
+        <div class="agent-avatar">
+          🔵
+          <div class="agent-status" id="status-prism"></div>
+        </div>
+        <div>
+          <div class="agent-name">PRISM</div>
+          <div class="agent-role">The Synthesizer · Neutral Analyst</div>
+          <p class="agent-desc">Data-driven and impartial, reconciles opposing views, identifies common ground, and drives toward consensus. The referee.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input Section -->
+    <div class="input-section" id="inputSection">
+      <label class="input-label" for="topicInput">📝 Enter a topic, question, or claim for the agents to debate</label>
+      <div class="topic-input-wrapper">
+        <textarea
+          class="topic-input"
+          id="topicInput"
+          placeholder="e.g., 'Is Bitcoin a better store of value than gold?' or 'Should AI systems be open-sourced?' or 'Evaluate the investment thesis for Ethereum in 2025'"
+          rows="4"
+        ></textarea>
+      </div>
+      <div class="input-actions">
+        <div class="example-topics">
+          <button class="example-btn" onclick="setExample(0)">Replace Bitcoin?</button>
+          <button class="example-btn" onclick="setExample(1)">SOL vs ETH</button>
+          <button class="example-btn" onclick="setExample(2)">Remote Work</button>
+          <button class="example-btn" onclick="setExample(3)">Blockchain Use Cases</button>
+          <button class="example-btn" onclick="setExample(4)">Nuclear vs Solar</button>
+        </div>
+        <button class="launch-btn" id="launchBtn" onclick="startDiscussion()">
+          <span class="btn-text">⚡ Launch Discussion</span>
+          <span class="spinner"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="progress-bar-container" id="progressBar">
+      <div class="progress-label">
+        <span id="progressPhase">Initializing...</span>
+        <span id="progressPercent">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+    <!-- Discussion Area -->
+    <div class="discussion-area" id="discussionArea"></div>
+
+    <!-- Reset Button -->
+    <button class="reset-btn" id="resetBtn" onclick="resetForum()">🔄 New Discussion</button>
+
+  </div>
+
+  <script src="engine.js"></script>
+</body>
+</html>

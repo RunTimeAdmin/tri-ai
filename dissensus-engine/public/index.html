@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DISSENSUS — AI Debate Engine</title>
+    <meta name="description" content="3 AI Minds. 1 Truth. Submit any topic and watch CIPHER, NOVA, and PRISM debate through structured dialectical phases.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+    <a href="/" class="header-logo">
+        <span class="bolt">⚡</span>
+        <h1>DISSENSUS</h1>
+        <span class="ticker">$DISS</span>
+    </a>
+    <div class="header-status">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Ready</span>
+    </div>
+</header>
+
+<!-- Main App -->
+<main class="app-container">
+
+    <!-- Setup Panel -->
+    <section class="setup-panel">
+        <h2>⚡ Dissensus Debate Engine</h2>
+        <p class="subtitle">3 AI Minds. 1 Truth. Enter a topic and watch the agents battle it out.</p>
+
+        <div class="input-row" style="margin-bottom: 1rem;">
+            <div class="input-group">
+                <label>API Key</label>
+                <input type="password" id="apiKeyInput" placeholder="sk-... or AIza..." autocomplete="off">
+            </div>
+            <div class="input-group">
+                <label>Provider</label>
+                <select id="providerSelect" onchange="updateModels()">
+                    <option value="deepseek">🔥 DeepSeek (Cheapest)</option>
+                    <option value="gemini">⚡ Google Gemini (Free Tier!)</option>
+                    <option value="openai">🧠 OpenAI</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Model</label>
+                <select id="modelSelect">
+                    <option value="deepseek-chat">DeepSeek V3.2 (~$0.008/debate)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="topic-input-wrapper">
+            <div class="input-group">
+                <label>Debate Topic</label>
+                <input type="text" id="topicInput" maxlength="500" placeholder="e.g. Is Ethereum a good investment in 2025? / Should AI be regulated? / Bitcoin vs Gold...">
+            </div>
+            <button class="btn-debate" id="startBtn" onclick="startDebate()">
+                <span id="btnText">⚡ Start Debate</span>
+                <div class="spinner hidden" id="btnSpinner"></div>
+            </button>
+        </div>
+
+        <div class="provider-hint" id="providerHint">
+            💡 <strong>DeepSeek V3.2</strong> — Best value. ~$0.008 per debate. Get API key at <a href="https://platform.deepseek.com/api_keys" target="_blank">platform.deepseek.com</a>
+        </div>
+    </section>
+
+    <!-- Phase Progress -->
+    <div class="phase-progress hidden" id="phaseProgress">
+        <div class="phase-step" id="phase1" data-phase="1">
+            <div class="phase-num">Phase 1</div>
+            <div class="phase-title">Analysis</div>
+        </div>
+        <div class="phase-step" id="phase2" data-phase="2">
+            <div class="phase-num">Phase 2</div>
+            <div class="phase-title">Arguments</div>
+        </div>
+        <div class="phase-step" id="phase3" data-phase="3">
+            <div class="phase-num">Phase 3</div>
+            <div class="phase-title">Cross-Exam</div>
+        </div>
+        <div class="phase-step" id="phase4" data-phase="4">
+            <div class="phase-num">Phase 4</div>
+            <div class="phase-title">Verdict</div>
+        </div>
+    </div>
+
+    <!-- Debate Arena -->
+    <div class="debate-arena" id="debateArena">
+        <div class="agents-row">
+            <!-- CIPHER Column -->
+            <div class="agent-column cipher" id="col-cipher">
+                <div class="agent-header">
+                    <img src="images/characters/cipher-portrait.jpg" alt="CIPHER" class="agent-avatar">
+                    <div class="agent-info">
+                        <h3>CIPHER</h3>
+                        <div class="agent-role">The Skeptic</div>
+                    </div>
+                    <div class="agent-status" id="status-cipher">
+                        <span>Waiting</span>
+                    </div>
+                </div>
+                <div class="agent-content" id="content-cipher"></div>
+            </div>
+
+            <!-- NOVA Column -->
+            <div class="agent-column nova" id="col-nova">
+                <div class="agent-header">
+                    <img src="images/characters/nova-portrait.jpg" alt="NOVA" class="agent-avatar">
+                    <div class="agent-info">
+                        <h3>NOVA</h3>
+                        <div class="agent-role">The Advocate</div>
+                    </div>
+                    <div class="agent-status" id="status-nova">
+                        <span>Waiting</span>
+                    </div>
+                </div>
+                <div class="agent-content" id="content-nova"></div>
+            </div>
+
+            <!-- PRISM Column -->
+            <div class="agent-column prism" id="col-prism">
+                <div class="agent-header">
+                    <img src="images/characters/prism-portrait.jpg" alt="PRISM" class="agent-avatar">
+                    <div class="agent-info">
+                        <h3>PRISM</h3>
+                        <div class="agent-role">The Synthesizer</div>
+                    </div>
+                    <div class="agent-status" id="status-prism">
+                        <span>Waiting</span>
+                    </div>
+                </div>
+                <div class="agent-content" id="content-prism"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Verdict Panel -->
+    <div class="verdict-panel" id="verdictPanel">
+        <div class="verdict-header">
+            <span style="font-size: 1.5rem;">🏛️</span>
+            <h2>DISSENSUS VERDICT</h2>
+        </div>
+        <div class="verdict-content" id="verdictContent"></div>
+    </div>
+
+</main>
+
+<script src="js/app.js"></script>
+</body>
+</html>

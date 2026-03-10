@@ -1,0 +1,56 @@
+# ============================================
+# Dissensus / Tri-AI — Git Ignore
+# ============================================
+
+# --- Environment & Secrets ---
+.env
+.env.local
+.env.*.local
+*.pem
+
+# --- Dependencies ---
+node_modules/
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+.venv/
+env/
+
+# --- Build & Output ---
+dist/
+build/
+.out/
+outputs/
+
+# --- Generated / Large ---
+generated_images/
+*.zip
+
+# --- Logs ---
+*.log
+logs/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- IDE ---
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# --- Cursor ---
+.cursor/
+
+# --- Test / Coverage ---
+coverage/
+.nyc_output/
+.pytest_cache/
+htmlcov/
+
+# --- Misc ---
+*.bak
+*.tmp

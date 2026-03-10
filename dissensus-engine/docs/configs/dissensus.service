@@ -1,0 +1,27 @@
+[Unit]
+Description=Dissensus AI Debate Engine
+Documentation=https://dissensus.fun
+After=network.target
+
+[Service]
+Type=simple
+User=dissensus
+Group=dissensus
+WorkingDirectory=/home/dissensus/dissensus-engine
+ExecStart=/usr/bin/node server/index.js
+Restart=on-failure
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=dissensus
+Environment=NODE_ENV=production
+Environment=PORT=3000
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/dissensus/dissensus-engine
+
+[Install]
+WantedBy=multi-user.target

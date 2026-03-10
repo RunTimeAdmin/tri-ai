@@ -1,0 +1,420 @@
+// ============================================================
+// DISSENSUS AI — Frontend Debate Controller
+// ============================================================
+// Handles SSE streaming, real-time UI updates, provider
+// selection, and the debate display logic for all 4 phases.
+// ============================================================
+
+// --- State ---
+let isDebating = false;
+let currentPhase = 0;
+let eventSource = null;
+let serverKeys = {}; // Which providers have server-side API keys
+
+const agentPhaseContent = {
+  cipher: {},
+  nova: {},
+  prism: {}
+};
+
+// --- Provider/Model Configuration ---
+const PROVIDER_CONFIG = {
+  deepseek: {
+    label: '🔥 DeepSeek',
+    placeholder: 'sk-...',
+    keyUrl: 'https://platform.deepseek.com/api_keys',
+    models: [
+      { id: 'deepseek-chat', name: 'DeepSeek V3.2 (~$0.008/debate)' }
+    ],
+    hint: '💡 <strong>DeepSeek V3.2</strong> — Best value. ~$0.008 per debate. Get API key at <a href="https://platform.deepseek.com/api_keys" target="_blank">platform.deepseek.com</a>'
+  },
+  gemini: {
+    label: '⚡ Google Gemini',
+    placeholder: 'AIza...',
+    keyUrl: 'https://aistudio.google.com/apikey',
+    models: [
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (~$0.03/debate)' },
+      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (~$0.006/debate)' },
+      { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite (~$0.006/debate)' }
+    ],
+    hint: '💡 <strong>Google Gemini</strong> — Has a FREE tier! Get API key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a>'
+  },
+  openai: {
+    label: '🧠 OpenAI',
+    placeholder: 'sk-...',
+    keyUrl: 'https://platform.openai.com/api-keys',
+    models: [
+      { id: 'gpt-4o', name: 'GPT-4o (~$0.15/debate)' },
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini (~$0.01/debate)' }
+    ],
+    hint: '💡 <strong>OpenAI</strong> — Premium quality. Get API key at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>'
+  }
+};
+
+// --- DOM References ---
+const $ = (id) => document.getElementById(id);
+
+// --- Provider/Model Switching ---
+function updateModels() {
+  const provider = $('providerSelect').value;
+  const config = PROVIDER_CONFIG[provider];
+  const modelSelect = $('modelSelect');
+  const hasServerKey = serverKeys[provider];
+  const apiKeyInput = $('apiKeyInput');
+  const apiKeyGroup = apiKeyInput?.closest('.input-group');
+
+  // Update model dropdown
+  modelSelect.innerHTML = '';
+  config.models.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.name;
+    modelSelect.appendChild(opt);
+  });
+
+  // API key: hide/optional when server has key
+  if (apiKeyInput) {
+    apiKeyInput.placeholder = hasServerKey ? '✓ Using server key' : config.placeholder;
+    apiKeyInput.required = !hasServerKey;
+    if (apiKeyGroup) {
+      apiKeyGroup.classList.toggle('server-key-mode', hasServerKey);
+      apiKeyGroup.title = hasServerKey ? 'Server has API key configured — no need to enter one' : '';
+    }
+  }
+
+  // Update hint
+  $('providerHint').innerHTML = hasServerKey
+    ? `✓ <strong>Server key active</strong> — No API key needed. Debates use the configured ${config.label} key.`
+    : config.hint;
+
+  // Restore saved model for this provider
+  const savedModel = localStorage.getItem(`dissensus_model_${provider}`);
+  if (savedModel) modelSelect.value = savedModel;
+
+  // Restore saved API key (clear if using server key)
+  const savedKey = hasServerKey ? '' : (localStorage.getItem(`dissensus_apikey_${provider}`) || '');
+  if ($('apiKeyInput')) $('apiKeyInput').value = savedKey;
+
+  localStorage.setItem('dissensus_provider', provider);
+}
+
+// --- Simple Markdown Renderer ---
+function renderMarkdown(text) {
+  if (!text) return '';
+  let html = text
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+
+  html = html.replace(/((?:<li>.*?<\/li>\s*)+)/g, '<ul>$1</ul>');
+  return `<p>${html}</p>`;
+}
+
+// --- Phase Labels ---
+const PHASE_LABELS = {
+  1: 'Phase 1 — Analysis',
+  2: 'Phase 2 — Opening Arguments',
+  3: 'Phase 3 — Cross-Examination',
+  4: 'Phase 4 — Final Verdict'
+};
+
+// --- Get or Create Phase Block in Agent Column ---
+function getPhaseBlock(agentId, phase) {
+  const key = `phase-${phase}`;
+  if (!agentPhaseContent[agentId][key]) {
+    const contentEl = $(`content-${agentId}`);
+    const block = document.createElement('div');
+    block.className = 'phase-block';
+    block.id = `${agentId}-${key}`;
+
+    const label = document.createElement('div');
+    label.className = 'phase-label';
+    label.textContent = PHASE_LABELS[phase] || `Phase ${phase}`;
+    block.appendChild(label);
+
+    const textEl = document.createElement('div');
+    textEl.className = 'phase-text';
+    block.appendChild(textEl);
+
+    contentEl.appendChild(block);
+    agentPhaseContent[agentId][key] = textEl;
+  }
+  return agentPhaseContent[agentId][key];
+}
+
+// --- Update Phase Progress UI ---
+function setPhase(phase, state) {
+  const el = $(`phase${phase}`);
+  if (!el) return;
+  el.classList.remove('active', 'done');
+  if (state === 'active') el.classList.add('active');
+  if (state === 'done') el.classList.add('done');
+}
+
+// --- Set Agent Speaking State ---
+function setAgentSpeaking(agentId, speaking) {
+  const col = $(`col-${agentId}`);
+  const status = $(`status-${agentId}`);
+  if (!col || !status) return;
+
+  if (speaking) {
+    col.classList.add('speaking');
+    status.className = 'agent-status speaking-status';
+    status.innerHTML = `<span>Speaking</span> <span class="typing-indicator"><span></span><span></span><span></span></span>`;
+  } else {
+    col.classList.remove('speaking');
+    status.className = 'agent-status';
+    status.innerHTML = `<span>Done</span>`;
+  }
+}
+
+function setAgentWaiting(agentId) {
+  const status = $(`status-${agentId}`);
+  if (!status) return;
+  status.className = 'agent-status';
+  status.innerHTML = `<span>Waiting</span>`;
+}
+
+function setHeaderStatus(active, text) {
+  const dot = $('statusDot');
+  const txt = $('statusText');
+  dot.className = active ? 'status-dot active' : 'status-dot';
+  txt.textContent = text || 'Ready';
+}
+
+function scrollToBottom(agentId) {
+  const el = $(`content-${agentId}`);
+  if (el) el.scrollTop = el.scrollHeight;
+}
+
+// --- Start Debate ---
+async function startDebate() {
+  const apiKey = ($('apiKeyInput').value || '').trim();
+  const topic = $('topicInput').value.trim();
+  const provider = $('providerSelect').value;
+  const model = $('modelSelect').value;
+  const hasServerKey = serverKeys[provider];
+
+  if (!hasServerKey && !apiKey) {
+    const config = PROVIDER_CONFIG[provider];
+    alert(`Please enter your ${config.label.replace(/[🔥⚡🧠] /g, '')} API key.`);
+    $('apiKeyInput').focus();
+    return;
+  }
+
+  if (!topic) {
+    alert('Please enter a debate topic.');
+    $('topicInput').focus();
+    return;
+  }
+  if (topic.length > 500) {
+    alert('Topic must be 500 characters or less.');
+    return;
+  }
+
+  if (isDebating) return;
+  isDebating = true;
+
+  // Save settings per provider (don't save API key if using server key)
+  if (!hasServerKey) localStorage.setItem(`dissensus_apikey_${provider}`, apiKey);
+  localStorage.setItem(`dissensus_model_${provider}`, model);
+  localStorage.setItem('dissensus_provider', provider);
+
+  // Reset UI
+  resetDebateUI();
+
+  // Show debate arena
+  $('phaseProgress').classList.remove('hidden');
+  $('debateArena').classList.add('visible');
+  $('verdictPanel').classList.remove('visible');
+
+  // Update button
+  $('startBtn').disabled = true;
+  $('btnText').textContent = 'Debating...';
+  $('btnSpinner').classList.remove('hidden');
+
+  setHeaderStatus(true, `Debating via ${PROVIDER_CONFIG[provider].label.replace(/[🔥⚡🧠] /g, '')}...`);
+
+  // Preflight validation (EventSource can't show 400 error messages)
+  try {
+    const validateRes = await fetch('/api/debate/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, apiKey, provider, model })
+    });
+    if (!validateRes.ok) {
+      const err = await validateRes.json().catch(() => ({}));
+      throw new Error(err.error || `Validation failed (${validateRes.status})`);
+    }
+  } catch (e) {
+    debateError(e.message);
+    return;
+  }
+
+  // Connect to SSE stream (apiKey can be empty when server has key)
+  const params = new URLSearchParams({ topic, provider, model });
+  if (apiKey) params.set('apiKey', apiKey);
+  eventSource = new EventSource(`/api/debate/stream?${params.toString()}`);
+
+  const rawText = { cipher: {}, nova: {}, prism: {} };
+
+  eventSource.onmessage = (event) => {
+    if (event.data === '[DONE]') {
+      eventSource.close();
+      debateComplete();
+      return;
+    }
+
+    try {
+      const data = JSON.parse(event.data);
+      handleDebateEvent(data, rawText);
+    } catch (e) {
+      console.error('Parse error:', e);
+    }
+  };
+
+  eventSource.onerror = (err) => {
+    console.error('SSE error:', err);
+    eventSource.close();
+    debateError('Connection failed. Check your API key, or wait a minute if you hit the rate limit (10 debates/min).');
+  };
+}
+
+// --- Handle Individual Debate Events ---
+function handleDebateEvent(data, rawText) {
+  switch (data.type) {
+    case 'phase-start': {
+      const phase = data.phase;
+      currentPhase = phase;
+      for (let i = 1; i < phase; i++) setPhase(i, 'done');
+      setPhase(phase, 'active');
+      ['cipher', 'nova', 'prism'].forEach(a => setAgentWaiting(a));
+      break;
+    }
+
+    case 'phase-done': {
+      setPhase(data.phase, 'done');
+      ['cipher', 'nova', 'prism'].forEach(a => {
+        const col = $(`col-${a}`);
+        if (col) col.classList.remove('speaking');
+      });
+      break;
+    }
+
+    case 'agent-start': {
+      const { agent, phase } = data;
+      setAgentSpeaking(agent, true);
+      if (!rawText[agent]) rawText[agent] = {};
+      rawText[agent][`phase-${phase}`] = '';
+      getPhaseBlock(agent, phase);
+      break;
+    }
+
+    case 'agent-chunk': {
+      const { agent, phase, chunk } = data;
+      if (!rawText[agent]) rawText[agent] = {};
+      const key = `phase-${phase}`;
+      if (rawText[agent][key] === undefined) rawText[agent][key] = '';
+      rawText[agent][key] += chunk;
+
+      const textEl = getPhaseBlock(agent, phase);
+      textEl.innerHTML = renderMarkdown(rawText[agent][key]);
+      textEl.classList.add('cursor-blink');
+      scrollToBottom(agent);
+      break;
+    }
+
+    case 'agent-done': {
+      const { agent, phase } = data;
+      setAgentSpeaking(agent, false);
+      const textEl = getPhaseBlock(agent, phase);
+      if (textEl) textEl.classList.remove('cursor-blink');
+      break;
+    }
+
+    case 'debate-done': {
+      const verdictEl = $('verdictContent');
+      const verdictRaw = rawText.prism?.['phase-4'] || '';
+      verdictEl.innerHTML = renderMarkdown(verdictRaw);
+      $('verdictPanel').classList.add('visible');
+
+      setTimeout(() => {
+        $('verdictPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+      break;
+    }
+
+    case 'error': {
+      debateError(data.message || 'An error occurred during the debate.');
+      break;
+    }
+  }
+}
+
+function debateComplete() {
+  isDebating = false;
+  $('startBtn').disabled = false;
+  $('btnText').textContent = '⚡ New Debate';
+  $('btnSpinner').classList.add('hidden');
+  setHeaderStatus(false, 'Debate complete');
+  for (let i = 1; i <= 4; i++) setPhase(i, 'done');
+}
+
+function debateError(message) {
+  isDebating = false;
+  $('startBtn').disabled = false;
+  $('btnText').textContent = '⚡ Retry Debate';
+  $('btnSpinner').classList.add('hidden');
+  setHeaderStatus(false, 'Error');
+  alert(`Debate Error: ${message}`);
+}
+
+function resetDebateUI() {
+  for (let i = 1; i <= 4; i++) {
+    const el = $(`phase${i}`);
+    if (el) el.classList.remove('active', 'done');
+  }
+
+  ['cipher', 'nova', 'prism'].forEach(agent => {
+    const content = $(`content-${agent}`);
+    if (content) content.innerHTML = '';
+    agentPhaseContent[agent] = {};
+    setAgentWaiting(agent);
+    const col = $(`col-${agent}`);
+    if (col) col.classList.remove('speaking');
+  });
+
+  $('verdictPanel').classList.remove('visible');
+  $('verdictContent').innerHTML = '';
+  currentPhase = 0;
+}
+
+// --- On Load ---
+document.addEventListener('DOMContentLoaded', async () => {
+  // Fetch server config (which providers have server-side keys)
+  try {
+    const res = await fetch('/api/config');
+    if (res.ok) {
+      const cfg = await res.json();
+      serverKeys = cfg.serverKeys || {};
+    }
+  } catch (e) {
+    console.warn('Could not fetch /api/config:', e);
+  }
+
+  // Restore saved provider
+  const savedProvider = localStorage.getItem('dissensus_provider') || 'deepseek';
+  $('providerSelect').value = savedProvider;
+  updateModels();
+
+  // Enter key to start
+  $('topicInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !isDebating) startDebate();
+  });
+});
