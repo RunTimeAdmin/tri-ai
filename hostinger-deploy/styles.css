@@ -34,6 +34,7 @@
 
 html {
     scroll-behavior: smooth;
+    min-height: 100%;
 }
 
 body {
@@ -42,6 +43,8 @@ body {
     color: var(--white);
     line-height: 1.6;
     overflow-x: hidden;
+    min-height: 100vh;
+    position: relative;
 }
 
 a {
@@ -69,6 +72,8 @@ a:hover {
     z-index: 0;
     pointer-events: none;
     animation: gridShift 20s linear infinite;
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }
 
 @keyframes gridShift {
@@ -90,6 +95,8 @@ a:hover {
     z-index: 0;
     pointer-events: none;
     animation: gradientMesh 15s ease-in-out infinite alternate;
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }
 
 @keyframes gradientMesh {
@@ -1155,6 +1162,7 @@ section {
 /* === REDUCED MOTION === */
 @media (prefers-reduced-motion: reduce) {
     .bg-grid, .hero-glow, .hero-title .ticker, .roadmap-line-progress { animation: none !important; }
+    .fade-in { opacity: 1 !important; animation: none !important; }
     .what-card, .agent-card, .phase-card, .token-card, .evo-card { transition-duration: 0.1s; }
 }
 
