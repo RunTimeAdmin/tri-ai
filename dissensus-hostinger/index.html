@@ -121,7 +121,7 @@
         <li><a href="#tokenomics">Tokenomics</a></li>
         <li><a href="#roadmap">Roadmap</a></li>
         <li><a href="#faq">FAQ</a></li>
-        <li><a href="#buy" class="btn-buy">Buy $DISS</a></li>
+        <li><a href="https://pump.fun/coin/G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXFpump" class="btn-buy" target="_blank" rel="noopener noreferrer">Buy $DISS</a></li>
         <li><a href="https://app.dissensus.fun" class="btn-launch" target="_blank" rel="noopener noreferrer">🚀 Launch App</a></li>
     </ul>
 </nav>
@@ -155,13 +155,13 @@
     
     <div class="hero-cta fade-in d5">
         <a href="https://app.dissensus.fun" class="btn-launch-hero" target="_blank" rel="noopener noreferrer">🚀 Launch Debate Engine</a>
-        <a href="#buy" class="btn-primary">🪙 Buy $DISS on pump.fun</a>
+        <a href="https://pump.fun/coin/G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXFpump" class="btn-primary" target="_blank" rel="noopener noreferrer">🪙 Buy $DISS on pump.fun</a>
         <a href="#about" class="btn-secondary">⚡ Learn More</a>
     </div>
     
     <div class="contract-bar fade-in d6" onclick="copyContract()" id="contractBar">
         <span class="label">CA:</span>
-        <span id="contractAddress">TBA — Launching Soon</span>
+        <span id="contractAddress">G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXF</span>
         <span class="copy-icon">📋</span>
     </div>
 </header>
@@ -460,7 +460,7 @@
     <p class="cta-desc">Join the Dissensus. Three AI minds are waiting for your first question.</p>
     <div class="cta-buttons">
         <a href="https://app.dissensus.fun" class="btn-launch-hero" target="_blank" rel="noopener noreferrer">🚀 Launch Debate Engine</a>
-        <a href="#" class="btn-primary" target="_blank" rel="noopener noreferrer">🪙 Buy on pump.fun</a>
+        <a href="https://pump.fun/coin/G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXFpump" class="btn-primary" target="_blank" rel="noopener noreferrer">🪙 Buy on pump.fun</a>
         <a href="https://x.com/DissensusDev" class="btn-secondary" target="_blank" rel="noopener noreferrer">🐦 Follow on X</a>
         <a href="#" class="btn-secondary" target="_blank" rel="noopener noreferrer">💬 Join Telegram</a>
     </div>
@@ -479,7 +479,7 @@
         <a href="https://app.dissensus.fun" target="_blank" rel="noopener noreferrer">🚀 Launch App</a>
         <a href="https://x.com/DissensusDev" target="_blank" rel="noopener noreferrer">X / Twitter</a>
         <a href="#" target="_blank" rel="noopener noreferrer">Telegram</a>
-        <a href="#" target="_blank" rel="noopener noreferrer">pump.fun</a>
+        <a href="https://pump.fun/coin/G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXFpump" target="_blank" rel="noopener noreferrer">pump.fun</a>
     </div>
     <p class="footer-copy">
         ⚡ Dissensus — Where Disagreement Forges Truth | $DISS on Solana<br>
@@ -509,7 +509,7 @@ document.querySelectorAll('.nav-links a').forEach(link => {
 // Copy contract address
 function copyContract() {
     const addr = document.getElementById('contractAddress').textContent;
-    if (addr === 'TBA — Launching Soon') {
+    if (!addr || addr.length < 20) {
         const bar = document.getElementById('contractBar');
         bar.style.borderColor = 'var(--red)';
         setTimeout(() => bar.style.borderColor = '', 1500);
