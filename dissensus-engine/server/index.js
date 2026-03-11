@@ -9,7 +9,7 @@ const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { DebateEngine, PROVIDERS } = require('./debate-engine');
-const { generateCard } = require('./card-generator');
+const { generateCard, summarizeVerdictForCard } = require('./card-generator');
 const { getDebateOfTheDay } = require('./debate-of-the-day');
 
 const app = express();
@@ -254,7 +254,18 @@ app.post('/api/card', cardLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Topic too long for card' });
     }
 
-    const pngBuffer = await generateCard(topicTrimmed, verdictStr);
+    // Summarize verdict when server keys available — ensures the answer fits on the card
+    let summarized = null;
+    const keysForCard = {
+      deepseek: process.env.DEEPSEEK_API_KEY,
+      openai: process.env.OPENAI_API_KEY,
+      gemini: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY
+    };
+    if (verdictStr.length > 500) {
+      summarized = await summarizeVerdictForCard(verdictStr, topicTrimmed, keysForCard);
+    }
+
+    const pngBuffer = await generateCard(topicTrimmed, verdictStr, summarized);
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Content-Disposition', 'attachment; filename="dissensus-debate-card.png"');
     res.setHeader('Cache-Control', 'no-store');

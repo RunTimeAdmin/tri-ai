@@ -1,8 +1,12 @@
 <!DOCTYPE html>
+<!-- Dissensus v3 - CA: G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXF -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>$DISS — Dissensus | Where Disagreement Forges Truth</title>
     <meta name="description" content="Three AI agents debate any topic and forge consensus from chaos. $DISS is the meme coin evolving into the AI utility protocol.">
     <meta property="og:title" content="$DISS — Dissensus | 3 AI Minds. 1 Truth.">
@@ -11,7 +15,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <link rel="icon" type="image/png" href="images/diss-pfp.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
 
@@ -69,9 +73,9 @@
         <a href="#about" class="btn-secondary">⚡ Learn More</a>
     </div>
     
-    <div class="contract-bar fade-in d6" onclick="copyContract()" id="contractBar">
+    <div class="contract-bar fade-in d6" onclick="copyContract()" id="contractBar" data-ca="G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXF">
         <span class="label">CA:</span>
-        <span id="contractAddress">G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXF</span>
+        <span class="ca-val">G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXF</span>
         <span class="copy-icon">📋</span>
     </div>
 </header>
@@ -434,6 +438,15 @@
 </footer>
 
 <script>
+// Ensure CA display is correct (guards against injected scripts overwriting)
+(function(){
+    const bar = document.getElementById('contractBar');
+    const ca = bar && bar.getAttribute('data-ca');
+    if (ca && bar) {
+        const span = bar.querySelector('.ca-val');
+        if (span) span.textContent = ca;
+    }
+})();
 // Mobile nav toggle
 function toggleMobileNav() {
     const links = document.getElementById('navLinks');
@@ -451,17 +464,15 @@ document.querySelectorAll('.nav-link').forEach(link => {
     });
 });
 
-// Copy contract address
+// Copy contract address (reads from data-ca to avoid overwrites)
 function copyContract() {
-    const addr = document.getElementById('contractAddress').textContent;
+    const bar = document.getElementById('contractBar');
+    const addr = bar ? bar.getAttribute('data-ca') || bar.querySelector('.ca-val')?.textContent : '';
     if (!addr || addr.length < 20) {
-        const bar = document.getElementById('contractBar');
-        bar.style.borderColor = 'var(--red)';
-        setTimeout(() => bar.style.borderColor = '', 1500);
+        if (bar) { bar.style.borderColor = 'var(--red)'; setTimeout(() => bar.style.borderColor = '', 1500); }
         return;
     }
     navigator.clipboard.writeText(addr).then(() => {
-        const bar = document.getElementById('contractBar');
         const original = bar.querySelector('.copy-icon').textContent;
         bar.querySelector('.copy-icon').textContent = '✅';
         bar.style.borderColor = 'var(--green)';
