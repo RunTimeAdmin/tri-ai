@@ -5,8 +5,8 @@
 ```bash
 cd /var/www/tri-ai
 git pull
-npm install
-pm2 restart dissensus
+cd dissensus-engine && npm install
+cd /var/www/tri-ai && pm2 restart dissensus
 ```
 
 ## What This Does
