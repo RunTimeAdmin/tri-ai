@@ -434,6 +434,33 @@ function setTopic(text) {
   if (el) { el.value = text; el.focus(); }
 }
 
+// Debate of the Day
+let debateOfTheDayTopic = '';
+
+async function loadDebateOfTheDay() {
+  const topicEl = $('dotdTopic');
+  const btnEl = $('dotdBtn');
+  if (!topicEl || !btnEl) return;
+  try {
+    const res = await fetch('/api/debate-of-the-day');
+    const data = await res.json();
+    debateOfTheDayTopic = data.topic || '';
+    topicEl.textContent = debateOfTheDayTopic || 'Is Bitcoin a good store of value?';
+    btnEl.disabled = !debateOfTheDayTopic;
+  } catch (e) {
+    topicEl.textContent = 'Is Bitcoin a good store of value?';
+    debateOfTheDayTopic = topicEl.textContent;
+    btnEl.disabled = false;
+  }
+}
+
+function useDebateOfTheDay() {
+  if (debateOfTheDayTopic) {
+    setTopic(debateOfTheDayTopic);
+    startDebate();
+  }
+}
+
 function copyVerdict() {
   const el = $('verdictContent');
   const btn = $('copyVerdictBtn');
@@ -500,4 +527,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('topicInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !isDebating) startDebate();
   });
+
+  // Debate of the Day
+  loadDebateOfTheDay();
 });

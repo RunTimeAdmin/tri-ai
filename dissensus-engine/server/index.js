@@ -10,6 +10,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { DebateEngine, PROVIDERS } = require('./debate-engine');
 const { generateCard } = require('./card-generator');
+const { getDebateOfTheDay } = require('./debate-of-the-day');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -213,6 +214,19 @@ app.get('/api/debate/stream', debateLimiter, async (req, res) => {
       sendEvent('error', { message: error.message });
       res.end();
     }
+  }
+});
+
+// ----------------------------------------------------------
+// Debate of the Day — trend-based topic from CoinGecko
+// ----------------------------------------------------------
+app.get('/api/debate-of-the-day', async (req, res) => {
+  try {
+    const topic = await getDebateOfTheDay();
+    res.json({ topic });
+  } catch (e) {
+    console.error('Debate of the day error:', e);
+    res.status(500).json({ topic: 'Is Bitcoin a good store of value?' });
   }
 });
 

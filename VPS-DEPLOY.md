@@ -28,7 +28,11 @@ pm2 logs dissensus --lines 20
 curl -s https://app.dissensus.fun/api/health
 ```
 
-## New Features (Share Card)
+## Debate of the Day
+
+Daily trending topic from CoinGecko. Users see a **"Debate of the Day"** banner; click to start. Topic refreshes once per day (server timezone via `DEBATE_OF_THE_DAY_TZ` in `.env`).
+
+## Share Card
 
 After deploy, users can click **"🖼️ Share Card"** after a debate to download a Twitter-sized PNG:
 - 1200×630, dark theme
