@@ -82,9 +82,9 @@ function updateModels() {
     }
   }
 
-  // Update hint
+  // Update hint based on provider
   $('providerHint').innerHTML = hasServerKey
-    ? `✓ <strong>Server key active</strong> — No API key needed. Optional: enter your own to use your quota instead.`
+    ? `✓ <strong>Server key active</strong> for ${config.label} — No API key needed. Optional: enter your own to use your quota.`
     : config.hint;
 
   // Restore saved model for this provider

@@ -211,6 +211,12 @@ body::before {
   color: var(--white);
 }
 
+.provider-note {
+  font-size: 0.9rem;
+  color: var(--gray-500);
+  margin: -0.5rem 0 1rem 0;
+}
+
 .topic-input-wrapper {
   display: flex;
   gap: 1rem;
