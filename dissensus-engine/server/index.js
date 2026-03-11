@@ -9,6 +9,7 @@ const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { DebateEngine, PROVIDERS } = require('./debate-engine');
+const { generateCard } = require('./card-generator');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,7 +30,7 @@ app.use(helmet({
   contentSecurityPolicy: false, // Disable — blocks onclick/onchange and external scripts
   crossOriginEmbedderPolicy: false
 }));
-app.use(express.json({ limit: '10kb' }));
+app.use(express.json({ limit: '50kb' })); // 50kb for card payload (verdict can be long)
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Rate limiting - prevent abuse
@@ -212,6 +213,41 @@ app.get('/api/debate/stream', debateLimiter, async (req, res) => {
       sendEvent('error', { message: error.message });
       res.end();
     }
+  }
+});
+
+// ----------------------------------------------------------
+// Shareable Debate Card — generates PNG for Twitter
+// ----------------------------------------------------------
+const cardLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: isProd ? 20 : 100,
+  message: { error: 'Too many card requests. Please wait a minute.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+app.post('/api/card', cardLimiter, async (req, res) => {
+  try {
+    const { topic, verdict } = req.body || {};
+    const topicTrimmed = (topic || '').toString().trim();
+    const verdictStr = (verdict || '').toString();
+
+    if (!topicTrimmed) {
+      return res.status(400).json({ error: 'Missing topic' });
+    }
+    if (topicTrimmed.length > 200) {
+      return res.status(400).json({ error: 'Topic too long for card' });
+    }
+
+    const pngBuffer = await generateCard(topicTrimmed, verdictStr);
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Content-Disposition', 'attachment; filename="dissensus-debate-card.png"');
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(pngBuffer);
+  } catch (err) {
+    console.error('Card generation error:', err);
+    res.status(500).json({ error: 'Failed to generate card' });
   }
 });
 

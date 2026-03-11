@@ -10,6 +10,7 @@ let isDebating = false;
 let currentPhase = 0;
 let eventSource = null;
 let serverKeys = {}; // Which providers have server-side API keys
+let lastDebateTopic = ''; // For Share Card
 
 const agentPhaseContent = {
   cipher: {},
@@ -231,6 +232,9 @@ async function startDebate() {
   localStorage.setItem(`dissensus_model_${provider}`, model);
   localStorage.setItem('dissensus_provider', provider);
 
+  // Store topic for Share Card
+  lastDebateTopic = topic;
+
   // Reset UI
   resetDebateUI();
 
@@ -437,6 +441,41 @@ function copyVerdict() {
   navigator.clipboard.writeText(el.innerText).then(() => {
     if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => btn.textContent = '📋 Copy', 2000); }
   });
+}
+
+async function shareCard() {
+  const verdictEl = $('verdictContent');
+  const btn = $('shareCardBtn');
+  if (!verdictEl || !verdictEl.textContent.trim()) return;
+  if (!lastDebateTopic) {
+    alert('No debate topic stored. Run a new debate first.');
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating...'; }
+  try {
+    const res = await fetch('/api/card', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topic: lastDebateTopic,
+        verdict: verdictEl.innerText
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Card failed (${res.status})`);
+    }
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'dissensus-debate-card.png';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    if (btn) { btn.textContent = '✓ Downloaded!'; setTimeout(() => { btn.textContent = '🖼️ Share Card'; btn.disabled = false; }, 2000); }
+  } catch (e) {
+    alert('Failed to generate card: ' + (e.message || 'Unknown error'));
+    if (btn) { btn.textContent = '🖼️ Share Card'; btn.disabled = false; }
+  }
 }
 
 // --- On Load ---
