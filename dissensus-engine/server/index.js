@@ -26,7 +26,7 @@ const SERVER_KEYS = {
 // Middleware
 // ----------------------------------------------------------
 app.use(helmet({
-  contentSecurityPolicy: isProd ? undefined : false, // Relax for dev
+  contentSecurityPolicy: false, // Disable — blocks onclick/onchange and external scripts
   crossOriginEmbedderPolicy: false
 }));
 app.use(express.json({ limit: '10kb' }));
