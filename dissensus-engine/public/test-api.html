@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head><title>API Test</title></head>
+<body>
+<h1>Dissensus API Diagnostic</h1>
+<button onclick="runTest()">Run Test</button>
+<pre id="out">Click Run Test</pre>
+<script>
+async function runTest() {
+  const out = document.getElementById('out');
+  out.textContent = 'Testing...\n';
+  try {
+    const r1 = await fetch('/api/config');
+    const c = await r1.json();
+    out.textContent += '1. /api/config: OK\n' + JSON.stringify(c, null, 2) + '\n\n';
+
+    const r2 = await fetch('/api/debate/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic: 'Is Bitcoin valuable?', apiKey: '', provider: 'deepseek', model: 'deepseek-chat' })
+    });
+    const v = await r2.json().catch(() => r2.status);
+    out.textContent += '2. /api/debate/validate: ' + r2.status + '\n' + JSON.stringify(v, null, 2) + '\n\n';
+
+    if (r2.ok) {
+      out.textContent += '3. Testing stream (5 sec)...\n';
+      const r3 = await fetch('/api/debate/stream?topic=Test&provider=deepseek&model=deepseek-chat');
+      out.textContent += '   Stream status: ' + r3.status + '\n';
+      if (r3.ok) {
+        const reader = r3.body.getReader();
+        let chunks = 0;
+        const t0 = Date.now();
+        while (Date.now() - t0 < 5000) {
+          const { done } = await reader.read();
+          if (done) break;
+          chunks++;
+        }
+        reader.cancel();
+        out.textContent += '   Chunks received: ' + chunks + '\n';
+      } else {
+        const err = await r3.json().catch(() => ({}));
+        out.textContent += '   Error: ' + JSON.stringify(err) + '\n';
+      }
+    }
+  } catch (e) {
+    out.textContent += 'ERROR: ' + e.message + '\n' + e.stack;
+  }
+}
+</script>
+</body>
+</html>

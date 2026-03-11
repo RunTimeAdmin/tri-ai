@@ -195,22 +195,27 @@ function scrollToBottom(agentId) {
 
 // --- Start Debate ---
 async function startDebate() {
-  const apiKey = ($('apiKeyInput').value || '').trim();
-  const topic = $('topicInput').value.trim();
-  const provider = $('providerSelect').value;
-  const model = $('modelSelect').value;
+  try {
+  const providerSelect = $('providerSelect');
+  const modelSelect = $('modelSelect');
+  const provider = providerSelect ? providerSelect.value : 'deepseek';
+  const model = modelSelect ? modelSelect.value : 'deepseek-chat';
+  const apiKeyInput = $('apiKeyInput');
+  const apiKey = (apiKeyInput && apiKeyInput.value || '').trim();
+  const topicInput = $('topicInput');
+  const topic = (topicInput && topicInput.value || '').trim();
   const hasServerKey = serverKeys[provider];
 
   if (!hasServerKey && !apiKey) {
     const config = PROVIDER_CONFIG[provider];
     alert(`Please enter your ${config.label.replace(/[🔥⚡🧠] /g, '')} API key.`);
-    $('apiKeyInput').focus();
+    if (apiKeyInput) apiKeyInput.focus();
     return;
   }
 
   if (!topic) {
     alert('Please enter a debate topic.');
-    $('topicInput').focus();
+    if (topicInput) topicInput.focus();
     return;
   }
   if (topic.length > 500) {
@@ -299,6 +304,14 @@ async function startDebate() {
     debateComplete();
   } catch (e) {
     debateError(e.message || 'Connection failed. Check your API key, or wait a minute if you hit the rate limit (10 debates/min).');
+  }
+  } catch (err) {
+    console.error('startDebate error:', err);
+    alert('Error: ' + (err.message || 'Something went wrong. Open DevTools (F12) → Console for details.'));
+    isDebating = false;
+    if ($('startBtn')) $('startBtn').disabled = false;
+    if ($('btnText')) $('btnText').textContent = '⚡ Start Debate';
+    if ($('btnSpinner')) $('btnSpinner').classList.add('hidden');
   }
 }
 
