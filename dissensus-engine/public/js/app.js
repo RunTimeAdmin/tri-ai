@@ -257,33 +257,49 @@ async function startDebate() {
     return;
   }
 
-  // Connect to SSE stream (apiKey can be empty when server has key)
+  // Connect to SSE stream using fetch (better error handling than EventSource)
   const params = new URLSearchParams({ topic, provider, model });
   if (apiKey) params.set('apiKey', apiKey);
-  eventSource = new EventSource(`/api/debate/stream?${params.toString()}`);
+  const streamUrl = `/api/debate/stream?${params.toString()}`;
 
   const rawText = { cipher: {}, nova: {}, prism: {} };
 
-  eventSource.onmessage = (event) => {
-    if (event.data === '[DONE]') {
-      eventSource.close();
-      debateComplete();
-      return;
+  try {
+    const res = await fetch(streamUrl);
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(errBody.error || `Server error (${res.status})`);
     }
+    if (!res.body) throw new Error('No response body');
 
-    try {
-      const data = JSON.parse(event.data);
-      handleDebateEvent(data, rawText);
-    } catch (e) {
-      console.error('Parse error:', e);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n\n');
+      buffer = lines.pop() || '';
+      for (const block of lines) {
+        if (block.startsWith('data: ')) {
+          const data = block.replace(/^data: /, '').trim();
+          if (data === '[DONE]') {
+            debateComplete();
+            return;
+          }
+          try {
+            const parsed = JSON.parse(data);
+            handleDebateEvent(parsed, rawText);
+          } catch (e) { /* ignore */ }
+        }
+      }
     }
-  };
-
-  eventSource.onerror = (err) => {
-    console.error('SSE error:', err);
-    eventSource.close();
-    debateError('Connection failed. Check your API key, or wait a minute if you hit the rate limit (10 debates/min).');
-  };
+    debateComplete();
+  } catch (e) {
+    debateError(e.message || 'Connection failed. Check your API key, or wait a minute if you hit the rate limit (10 debates/min).');
+  }
 }
 
 // --- Handle Individual Debate Events ---
