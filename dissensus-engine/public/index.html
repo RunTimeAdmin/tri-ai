@@ -59,6 +59,11 @@
             <div class="input-group">
                 <label>Debate Topic</label>
                 <input type="text" id="topicInput" maxlength="500" placeholder="e.g. Is Ethereum a good investment in 2025? / Should AI be regulated? / Bitcoin vs Gold...">
+                <div class="topic-suggestions">
+                    <span class="topic-chip" onclick="setTopic('Is Bitcoin a good store of value?')">Bitcoin</span>
+                    <span class="topic-chip" onclick="setTopic('Should AI be regulated by governments?')">AI Regulation</span>
+                    <span class="topic-chip" onclick="setTopic('Ethereum vs Solana: which will win?')">ETH vs SOL</span>
+                </div>
             </div>
             <button class="btn-debate" id="startBtn" onclick="startDebate()">
                 <span id="btnText">⚡ Start Debate</span>
@@ -146,6 +151,7 @@
         <div class="verdict-header">
             <span style="font-size: 1.5rem;">🏛️</span>
             <h2>DISSENSUS VERDICT</h2>
+            <button class="btn-copy-verdict" id="copyVerdictBtn" onclick="copyVerdict()" title="Copy to clipboard">📋 Copy</button>
         </div>
         <div class="verdict-content" id="verdictContent"></div>
     </div>

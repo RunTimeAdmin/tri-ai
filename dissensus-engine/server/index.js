@@ -89,9 +89,11 @@ app.get('/api/providers', (req, res) => {
 // Validate model exists for provider
 // ----------------------------------------------------------
 function getEffectiveApiKey(provider, userApiKey) {
+  const trimmed = (userApiKey || '').trim();
+  if (trimmed) return trimmed; // User's own key takes precedence
   const serverKey = SERVER_KEYS[provider];
   if (serverKey) return serverKey;
-  return userApiKey || null;
+  return null;
 }
 
 function validateModel(provider, model) {

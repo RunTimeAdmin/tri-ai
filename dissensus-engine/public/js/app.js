@@ -72,27 +72,27 @@ function updateModels() {
     modelSelect.appendChild(opt);
   });
 
-  // API key: hide/optional when server has key
+  // API key: optional when server has key, always allow user override
   if (apiKeyInput) {
-    apiKeyInput.placeholder = hasServerKey ? '✓ Using server key' : config.placeholder;
+    apiKeyInput.placeholder = hasServerKey ? 'Optional: your key (uses server key if empty)' : config.placeholder;
     apiKeyInput.required = !hasServerKey;
     if (apiKeyGroup) {
       apiKeyGroup.classList.toggle('server-key-mode', hasServerKey);
-      apiKeyGroup.title = hasServerKey ? 'Server has API key configured — no need to enter one' : '';
+      apiKeyGroup.title = hasServerKey ? 'Enter your own key to use your API quota, or leave empty to use server key' : '';
     }
   }
 
   // Update hint
   $('providerHint').innerHTML = hasServerKey
-    ? `✓ <strong>Server key active</strong> — No API key needed. Debates use the configured ${config.label} key.`
+    ? `✓ <strong>Server key active</strong> — No API key needed. Optional: enter your own to use your quota instead.`
     : config.hint;
 
   // Restore saved model for this provider
   const savedModel = localStorage.getItem(`dissensus_model_${provider}`);
   if (savedModel) modelSelect.value = savedModel;
 
-  // Restore saved API key (clear if using server key)
-  const savedKey = hasServerKey ? '' : (localStorage.getItem(`dissensus_apikey_${provider}`) || '');
+  // Restore saved API key
+  const savedKey = localStorage.getItem(`dissensus_apikey_${provider}`) || '';
   if ($('apiKeyInput')) $('apiKeyInput').value = savedKey;
 
   localStorage.setItem('dissensus_provider', provider);
@@ -422,6 +422,21 @@ function resetDebateUI() {
   $('verdictPanel').classList.remove('visible');
   $('verdictContent').innerHTML = '';
   currentPhase = 0;
+}
+
+// --- Helpers ---
+function setTopic(text) {
+  const el = $('topicInput');
+  if (el) { el.value = text; el.focus(); }
+}
+
+function copyVerdict() {
+  const el = $('verdictContent');
+  const btn = $('copyVerdictBtn');
+  if (!el || !el.textContent.trim()) return;
+  navigator.clipboard.writeText(el.innerText).then(() => {
+    if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => btn.textContent = '📋 Copy', 2000); }
+  });
 }
 
 // --- On Load ---
