@@ -28,19 +28,49 @@ function truncateText(text, maxLen = 280) {
   return text.slice(0, maxLen - 3).trim() + '…';
 }
 
-// Extract first meaningful paragraph for card summary
-function extractSummary(verdict) {
-  if (!verdict) return '';
-  // Strip markdown headers, get first real content
-  let cleaned = verdict
-    .replace(/^#+ .+$/gm, '')
-    .replace(/\*\*(.+?)\*\*/g, '$1')
-    .replace(/\*(.+?)\*/g, '$1')
-    .replace(/^\- .+$/gm, '')
-    .trim();
-  const paras = cleaned.split(/\n\n+/);
-  const first = paras.find(p => p.length > 30) || paras[0] || '';
-  return truncateText(first, 200);
+// Extract the TOP ANSWER in full: Recommended List first, else full Ranked Conclusions
+function extractCardContent(verdict) {
+  if (!verdict) return { listItems: [], summary: '', conviction: '' };
+  const raw = verdict.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1');
+
+  // 1. PRIORITY: Recommended List / Ranked Picks — THE CONCRETE ANSWER, IN FULL
+  const listMatch = raw.match(/(?:Recommended List|Ranked Picks)[\s\/]*\n([\s\S]*?)(?=\n###|\n##\s|Ranked Conclusions|Where the Agents|Unresolved|Final Score|$)/i);
+  let listItems = [];
+  if (listMatch) {
+    const block = listMatch[1].trim();
+    listItems = block.split(/\n/).map(line => line.replace(/^\s*[-*\d.)]+\s*/, '').trim()).filter(Boolean);
+  }
+
+  // 2. If no list, get Ranked Conclusions — IN FULL (all of them)
+  if (listItems.length === 0) {
+    const conclMatch = raw.match(/(?:Ranked Conclusions?[:\s]*\n)([\s\S]*?)(?=\n###|\n##\s|Where the Agents|Unresolved|Final Score|$)/i);
+    if (conclMatch) {
+      const block = conclMatch[1].trim();
+      listItems = block.split(/\n/).map(line => {
+        const clean = line.replace(/^\s*[-*\d.)]+\s*/, '').replace(/\s*—\s*Confidence[^\n]*/i, '').trim();
+        return clean;
+      }).filter(l => l.length > 5);
+    }
+  }
+
+  // 3. Overall Assessment (brief — list is the star)
+  const assessMatch = raw.match(/(?:Overall Assessment|### Overall Assessment)\s*\n([\s\S]*?)(?=\n###|\n##\s|$)/i);
+  let summary = '';
+  if (assessMatch) {
+    summary = assessMatch[1].trim().split(/\n\n+/)[0] || '';
+  }
+  if (!summary && listItems.length === 0) {
+    const paras = raw.replace(/^#+ .+$/gm, '').trim().split(/\n\n+/);
+    summary = paras.find(p => p.length > 40) || paras[0] || '';
+  }
+  summary = truncateText(summary, 240);
+
+  // 4. Overall Conviction
+  const convMatch = raw.match(/Overall Conviction[:\s]*(\w+(?:\s+\w+)?)/i)
+    || raw.match(/(?:Lean\s+)?(BULLISH|BEARISH|NEUTRAL)/i);
+  const conviction = convMatch ? convMatch[1].trim() : '';
+
+  return { listItems, summary, conviction };
 }
 
 let fontCache = null;
@@ -62,7 +92,8 @@ async function loadFont() {
 async function generateCard(topic, verdict) {
   const fontData = await loadFont();
   const isCrypto = isCryptoTopic(topic);
-  const summary = extractSummary(verdict) || 'Three AI minds debated. See the full verdict at dissensus.fun';
+  const { listItems, summary, conviction } = extractCardContent(verdict);
+  const fallback = 'Three AI minds debated. See the full verdict at dissensus.fun';
 
   // Satori uses React-element-like objects (no JSX)
   const card = {
@@ -124,17 +155,69 @@ async function generateCard(topic, verdict) {
             children: truncateText(topic, 80)
           }
         },
-        // Verdict summary
+        // Verdict content block — LIST IS THE STAR (full, no truncation)
         {
           type: 'div',
           props: {
             style: {
-              fontSize: 20,
-              color: '#94a3b8',
-              lineHeight: 1.5,
-              flex: 1
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12
             },
-            children: summary
+            children: [
+              // THE ANSWER: Full list (Recommended List or Ranked Conclusions)
+              ...(listItems.length > 0 ? [{
+                type: 'div',
+                props: {
+                  style: {
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6
+                  },
+                  children: listItems.map((item, i) => ({
+                    type: 'div',
+                    props: {
+                      style: {
+                        fontSize: 15,
+                        color: '#e2e8f0',
+                        lineHeight: 1.35,
+                        display: 'flex',
+                        gap: 8
+                      },
+                      children: [
+                        { type: 'span', props: { style: { color: '#06b6d4', fontWeight: 600, flexShrink: 0 }, children: `${i + 1}.` } },
+                        { type: 'span', props: { style: { flex: 1 }, children: item } }
+                      ]
+                    }
+                  }))
+                }
+              }] : []),
+              // Summary (when no list, or brief context)
+              (summary || (!listItems.length && fallback)) ? {
+                type: 'div',
+                props: {
+                  style: {
+                    fontSize: listItems.length ? 14 : 20,
+                    color: '#94a3b8',
+                    lineHeight: 1.4
+                  },
+                  children: summary || fallback
+                }
+              } : null,
+              // Conviction badge
+              ...(conviction ? [{
+                type: 'div',
+                props: {
+                  style: {
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: conviction.toLowerCase().includes('bull') ? '#22c55e' : conviction.toLowerCase().includes('bear') ? '#ef4444' : '#06b6d4'
+                  },
+                  children: `Overall: ${conviction.toUpperCase()}`
+                }
+              }] : [])
+            ].filter(Boolean)
           }
         },
         // Footer row
