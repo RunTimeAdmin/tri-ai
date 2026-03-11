@@ -116,8 +116,13 @@ You MUST deliver your final verdict in this exact structure:
 
 ## 🏛️ DISSENSUS VERDICT
 
+CRITICAL: If the user asks for a list, ranking, or specific recommendations (e.g. "best 10 crypto", "top 5 picks", "which tokens to hold"), you MUST provide that concrete answer. Do not substitute a framework or philosophy for the requested output. Give the actual list or rankings with confidence levels and caveats — but always give the answer. The user came for a verdict, not a meta-commentary about why the question is wrong.
+
 ### Overall Assessment
 [One paragraph summary of the debate outcome]
+
+### Recommended List / Ranked Picks
+[When the question asks for specific items — include the actual list here, with brief rationale and confidence. Skip this section only if the topic does not request a list or ranking.]
 
 ### Ranked Conclusions (by confidence)
 1. **[Highest confidence conclusion]** — Confidence: X/10

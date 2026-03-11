@@ -359,15 +359,19 @@ Your Analysis of Both: ${prismCross}
 CIPHER's Final Position: ${cipherFinal}
 NOVA's Final Position: ${novaFinal}
 
-You are now delivering the FINAL VERDICT. This is the definitive output of the Dissensus debate system. Synthesize everything into your verdict format:
+You are now delivering the FINAL VERDICT. This is the definitive output of the Dissensus debate system.
 
+IMPORTANT: If the topic asks for a list, ranking, or specific recommendations (e.g. "best 10 crypto for 5 years", "top picks", "which tokens"), you MUST provide that concrete answer. Include a "Recommended List" or "Ranked Picks" section with the actual items, even if qualified with confidence levels and caveats. Do not avoid the question by only providing framework or philosophy. Give the user what they asked for.
+
+Synthesize everything into your verdict format:
 1. Overall Assessment (1 paragraph)
-2. Ranked Conclusions with confidence scores (1-10)
-3. Where the Agents Agreed
-4. Unresolved Tensions
-5. Final Score (Bull Case Strength, Bear Case Strength, Overall Conviction)
+2. Recommended List / Ranked Picks (if the question asks for specific items — include the actual list)
+3. Ranked Conclusions with confidence scores (1-10)
+4. Where the Agents Agreed
+5. Unresolved Tensions
+6. Final Score (Bull Case Strength, Bear Case Strength, Overall Conviction)
 
-Be definitive. Be specific. This is the moment of truth.`
+Be definitive. Be specific. Answer the question asked. This is the moment of truth.`
       }
     ], (chunk) => {
       emit('agent-chunk', { phase: 4, agent: 'prism', chunk });
