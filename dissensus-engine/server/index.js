@@ -29,6 +29,14 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 const isProd = NODE_ENV === 'production';
 const STAKING_ENFORCE = /^1|true|yes$/i.test(String(process.env.STAKING_ENFORCE || ''));
 
+// Reverse proxy (nginx, Cloudflare, Hostinger) sends X-Forwarded-For.
+// express-rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR if this is off.
+// Set TRUST_PROXY=0 only if Node listens directly on the public internet with no proxy.
+if (!/^0|false$/i.test(String(process.env.TRUST_PROXY || '').trim())) {
+  const hops = Math.min(32, Math.max(1, parseInt(process.env.TRUST_PROXY_HOPS || '1', 10) || 1));
+  app.set('trust proxy', hops);
+}
+
 // Server-side API keys (set in .env for VPS - users don't need to provide)
 const SERVER_KEYS = {
   openai: process.env.OPENAI_API_KEY,

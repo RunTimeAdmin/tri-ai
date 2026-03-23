@@ -144,6 +144,10 @@ dissensus-engine/
 | `DISS_TOKEN_MINT` | Project mint CA | SPL mint for $DISS |
 | `SOLANA_CLUSTER` | `mainnet-beta` | Shown in `/api/config` |
 | `DISS_STAKING_PROGRAM_ID` | _(unset)_ | When set, signals future on-chain staking wiring |
+| `TRUST_PROXY` | _(on)_ | Set `0` or `false` only if Node has **no** reverse proxy (disables `trust proxy`) |
+| `TRUST_PROXY_HOPS` | `1` | Number of trusted proxy hops (nginx in front = usually `1`) |
+
+**Behind nginx / Hostinger proxy:** leave `TRUST_PROXY` unset (default). If you see `ERR_ERL_UNEXPECTED_X_FORWARDED_FOR` in logs, pull latest — the server enables `trust proxy` by default.
 
 ### Adding New Providers
 
