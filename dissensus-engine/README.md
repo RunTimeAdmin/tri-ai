@@ -75,6 +75,38 @@ DEEPSEEK_API_KEY=sk-your-key    # Recommended — ~$0.008/debate
 
 See **docs/DEPLOY-VPS.md** for the full Hostinger deployment guide.
 
+### 🔐 Simulated staking (Phase 1)
+
+In-memory **simulated** $DISS tiers for demos. Production would verify on-chain stake.
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/staking/tiers` | Tier thresholds & features |
+| `GET /api/staking/status?wallet=...` | Tier, staked amount, debates used / remaining today |
+| `POST /api/staking/stake` | Body `{ wallet, amount }` — set simulated stake |
+| `POST /api/staking/unstake` | Body `{ wallet }` — reset stake to 0 |
+
+Set **`STAKING_ENFORCE=1`** in `.env` to require a wallet and enforce daily debate limits by tier. Default: off (optional wallet; limits only apply when a wallet is sent).
+
+### 📊 Metrics & transparency (Phase 4)
+
+In-memory analytics for this process (resets on restart):
+
+| Endpoint / page | Purpose |
+|-----------------|--------|
+| `GET /api/metrics?recent=12` | JSON: debate counts, provider usage, simulated staking aggregates, optional `recentTopics` |
+| `GET /api/metrics/topics?limit=10` | JSON array: recent topic rows only |
+| **`/metrics`** | Public dashboard (auto-refresh ~60s) |
+
+`recordDebate` runs after each completed debate; `recordError` on debate/card/debate-of-the-day failures.
+
+### 🔗 Solana wallet & $DISS balance
+
+- **Header:** Connect with **Phantom** or **Solflare**; shows shortened address + **on-chain $DISS** balance.
+- **Balance** is read via **`GET /api/solana/token-balance?wallet=`** using server `SOLANA_RPC_URL` (keeps premium RPC keys off the client).
+- **Mint:** `DISS_TOKEN_MINT` (defaults to project CA / mint).
+- **On-chain stake/unstake:** not live until you deploy a program and set **`DISS_STAKING_PROGRAM_ID`** — see **`GET /api/solana/staking-status`**.
+
 ## 📁 Project Structure
 
 ```
@@ -84,7 +116,10 @@ dissensus-engine/
 ├── server/
 │   ├── index.js              # Express server + SSE streaming
 │   ├── agents.js             # Agent personality definitions
-│   └── debate-engine.js      # 4-phase debate orchestrator (multi-provider)
+│   ├── debate-engine.js      # 4-phase debate orchestrator (multi-provider)
+│   ├── staking.js            # Simulated $DISS tiers & daily debate limits
+│   ├── metrics.js            # In-memory analytics for transparency dashboard
+│   └── solana-balance.js     # Server-side SPL token balance for $DISS
 └── public/
     ├── index.html            # Main UI
     ├── css/
@@ -105,6 +140,10 @@ dissensus-engine/
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3000` | Server port |
+| `SOLANA_RPC_URL` | `https://api.mainnet-beta.solana.com` | RPC for on-chain balance checks |
+| `DISS_TOKEN_MINT` | Project mint CA | SPL mint for $DISS |
+| `SOLANA_CLUSTER` | `mainnet-beta` | Shown in `/api/config` |
+| `DISS_STAKING_PROGRAM_ID` | _(unset)_ | When set, signals future on-chain staking wiring |
 
 ### Adding New Providers
 

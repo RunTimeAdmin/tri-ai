@@ -19,6 +19,13 @@
         <h1>DISSENSUS</h1>
         <span class="ticker">$DISS</span>
     </a>
+    <div class="header-wallet" id="headerWallet">
+        <span class="wallet-balance hidden" id="walletBalance" onclick="dissensusRefreshWalletBalance()" title="Click to refresh on-chain balance"></span>
+        <span class="wallet-addr hidden" id="walletShortAddr"></span>
+        <button type="button" class="header-wallet-btn" id="btnConnectWallet" onclick="dissensusConnectWallet()">🔗 Connect</button>
+        <button type="button" class="header-wallet-btn hidden" id="btnDisconnectWallet" onclick="dissensusDisconnectWallet()">Disconnect</button>
+    </div>
+    <a href="/metrics" class="header-buy" style="margin-right:0.5rem;">📊 Metrics</a>
     <a href="https://pump.fun/coin/G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXFpump" class="header-buy" target="_blank" rel="noopener noreferrer">🪙 Buy $DISS</a>
     <div class="header-status">
         <div class="status-dot" id="statusDot"></div>
@@ -80,6 +87,36 @@
         <div class="provider-hint" id="providerHint">
             💡 <strong>DeepSeek V3.2</strong> — Best value. ~$0.008 per debate. Get API key at <a href="https://platform.deepseek.com/api_keys" target="_blank">platform.deepseek.com</a>
         </div>
+
+        <!-- Simulated staking (Phase 1) — production will use on-chain stake -->
+        <details class="staking-panel" id="stakingPanel">
+            <summary class="staking-summary">🔐 Simulated $DISS staking <span class="staking-badge" id="stakingTierBadge">—</span></summary>
+            <div class="staking-body">
+                <p class="staking-note"><strong>On-chain:</strong> use <strong>Connect</strong> in the header for Phantom / Solflare — we verify real $DISS balance via the server (read-only). <strong>Simulated stake</strong> below is still demo-only until a staking program is deployed (<code>DISS_STAKING_PROGRAM_ID</code>).</p>
+                <p class="staking-enforce-msg hidden" id="stakingEnforceMsg">⚠️ This server requires a wallet for debates (<code>STAKING_ENFORCE</code>).</p>
+                <div class="staking-row">
+                    <div class="input-group staking-wallet-group">
+                        <label>Wallet (pubkey)</label>
+                        <input type="text" id="stakingWalletInput" placeholder="e.g. G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXF" autocomplete="off" spellcheck="false">
+                    </div>
+                    <button type="button" class="btn-staking-secondary" onclick="saveStakingWallet()">Save</button>
+                    <button type="button" class="btn-staking-secondary" onclick="refreshStakingStatus()">Refresh</button>
+                </div>
+                <div class="staking-status" id="stakingStatusText">Enter wallet and click Refresh.</div>
+                <div class="staking-row staking-actions">
+                    <div class="input-group">
+                        <label>Simulate stake ($DISS amount)</label>
+                        <input type="number" id="stakingAmountInput" min="0" step="1000" placeholder="1000000 for GOLD">
+                    </div>
+                    <button type="button" class="btn-staking" onclick="doSimulateStake()">Stake (simulated)</button>
+                    <button type="button" class="btn-staking-outline" onclick="doSimulateUnstake()">Unstake all</button>
+                </div>
+                <details class="staking-tiers-wrap">
+                    <summary>Tier thresholds</summary>
+                    <ul class="staking-tiers-list" id="stakingTiersList"></ul>
+                </details>
+            </div>
+        </details>
     </section>
 
     <!-- Phase Progress -->
@@ -168,5 +205,6 @@
 </main>
 
 <script src="js/app.js"></script>
+<script src="js/wallet-connect.js"></script>
 </body>
 </html>

@@ -11,11 +11,23 @@ const rateLimit = require('express-rate-limit');
 const { DebateEngine, PROVIDERS } = require('./debate-engine');
 const { generateCard, summarizeVerdictForCard } = require('./card-generator');
 const { getDebateOfTheDay } = require('./debate-of-the-day');
+const {
+  getStakingInfo,
+  simulateStake,
+  simulateUnstake,
+  canDebate,
+  recordDebateUsage,
+  getAllTiers,
+  normalizeWallet
+} = require('./staking');
+const { recordDebate, recordError, getPublicMetrics, getRecentTopics, syncStakingFromModule } = require('./metrics');
+const { fetchDissBalance, getDissMintString } = require('./solana-balance');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const isProd = NODE_ENV === 'production';
+const STAKING_ENFORCE = /^1|true|yes$/i.test(String(process.env.STAKING_ENFORCE || ''));
 
 // Server-side API keys (set in .env for VPS - users don't need to provide)
 const SERVER_KEYS = {
@@ -53,7 +65,51 @@ app.get('/api/config', (req, res) => {
   }
   res.json({
     serverKeys,
-    maxTopicLength: 500
+    maxTopicLength: 500,
+    stakingEnforce: STAKING_ENFORCE,
+    stakingSimulated: true,
+    solana: {
+      cluster: (process.env.SOLANA_CLUSTER || 'mainnet-beta').trim(),
+      dissTokenMint: getDissMintString(),
+      balanceCheckUrl: '/api/solana/token-balance'
+    }
+  });
+});
+
+// ----------------------------------------------------------
+// Solana — on-chain $DISS balance (server RPC; no keys leaked to client)
+// ----------------------------------------------------------
+const solanaBalanceLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: isProd ? 60 : 120,
+  message: { error: 'Too many balance requests.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+app.get('/api/solana/token-balance', solanaBalanceLimiter, async (req, res) => {
+  const wallet = req.query.wallet;
+  try {
+    const result = await fetchDissBalance(wallet);
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    if (e.code === 'INVALID_WALLET') {
+      return res.status(400).json({ error: e.message });
+    }
+    console.error('Solana balance error:', e.message || e);
+    recordError(e);
+    res.status(500).json({ error: 'Failed to fetch token balance' });
+  }
+});
+
+// Placeholder for future stake program integration
+app.get('/api/solana/staking-status', (req, res) => {
+  res.json({
+    programId: process.env.DISS_STAKING_PROGRAM_ID || null,
+    onChainStakingLive: !!process.env.DISS_STAKING_PROGRAM_ID,
+    message: process.env.DISS_STAKING_PROGRAM_ID
+      ? 'Staking program configured — wire instructions in a future release.'
+      : 'On-chain stake/unstake: deploy program and set DISS_STAKING_PROGRAM_ID in .env.'
   });
 });
 
@@ -111,10 +167,21 @@ function validateModel(provider, model) {
 // Validate debate params (preflight - EventSource can't show 400 errors)
 // ----------------------------------------------------------
 app.post('/api/debate/validate', async (req, res) => {
-  const { topic, apiKey, provider, model } = req.body || {};
+  const { topic, apiKey, provider, model, wallet } = req.body || {};
   const topicTrimmed = (topic || '').toString().trim();
   const providerName = ((provider || 'deepseek') + '').toLowerCase();
   const modelId = model || (providerName === 'deepseek' ? 'deepseek-chat' : providerName === 'gemini' ? 'gemini-2.0-flash' : 'gpt-4o');
+  const walletNorm = normalizeWallet(wallet);
+
+  if (STAKING_ENFORCE && !walletNorm) {
+    return res.status(400).json({ error: 'Wallet address required (staking limits enabled). Paste your Solana wallet in Staking.' });
+  }
+  if (walletNorm) {
+    const gate = canDebate(walletNorm);
+    if (!gate.allowed) {
+      return res.status(403).json({ error: gate.reason || 'Debate limit reached for today.' });
+    }
+  }
 
   if (!topicTrimmed) {
     return res.status(400).json({ error: 'Missing topic' });
@@ -143,7 +210,20 @@ app.post('/api/debate/validate', async (req, res) => {
 // Start Debate — SSE Streaming Endpoint
 // ----------------------------------------------------------
 app.get('/api/debate/stream', debateLimiter, async (req, res) => {
-  const { topic, apiKey, provider, model } = req.query;
+  const { topic, apiKey, provider, model, wallet } = req.query;
+  const walletNorm = normalizeWallet(wallet);
+
+  if (STAKING_ENFORCE && !walletNorm) {
+    res.status(400).json({ error: 'Wallet address required (staking limits enabled).' });
+    return;
+  }
+  if (walletNorm) {
+    const gate = canDebate(walletNorm);
+    if (!gate.allowed) {
+      res.status(403).json({ error: gate.reason || 'Debate limit reached for today.' });
+      return;
+    }
+  }
 
   // Input validation
   if (!topic || typeof topic !== 'string') {
@@ -204,17 +284,67 @@ app.get('/api/debate/stream', debateLimiter, async (req, res) => {
       if (!aborted) sendEvent(type, data);
     });
 
+    if (!aborted && walletNorm) {
+      recordDebateUsage(walletNorm);
+    }
+
     if (!aborted) {
+      recordDebate(topicTrimmed, providerName, modelId);
       res.write('data: [DONE]\n\n');
       res.end();
     }
   } catch (error) {
     console.error('Debate error:', error.message);
+    recordError(error);
     if (!aborted) {
       sendEvent('error', { message: error.message });
       res.end();
     }
   }
+});
+
+// ----------------------------------------------------------
+// Simulated staking — tiers, stake/unstake, status
+// ----------------------------------------------------------
+const stakingLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: isProd ? 60 : 200,
+  message: { error: 'Too many staking requests.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+app.get('/api/staking/tiers', (req, res) => {
+  res.json({ tiers: getAllTiers(), simulated: true, enforce: STAKING_ENFORCE });
+});
+
+app.get('/api/staking/status', stakingLimiter, (req, res) => {
+  const walletNorm = normalizeWallet(req.query.wallet);
+  if (!walletNorm) {
+    return res.status(400).json({ error: 'Missing or invalid wallet query param' });
+  }
+  res.json({ ...getStakingInfo(walletNorm), wallet: walletNorm });
+});
+
+app.post('/api/staking/stake', stakingLimiter, (req, res) => {
+  try {
+    const walletNorm = normalizeWallet(req.body?.wallet);
+    const amount = req.body?.amount;
+    if (!walletNorm) return res.status(400).json({ error: 'Invalid wallet' });
+    const info = simulateStake(walletNorm, amount);
+    syncStakingFromModule();
+    res.json({ ok: true, ...info, wallet: walletNorm });
+  } catch (e) {
+    res.status(400).json({ error: e.message || 'Stake failed' });
+  }
+});
+
+app.post('/api/staking/unstake', stakingLimiter, (req, res) => {
+  const walletNorm = normalizeWallet(req.body?.wallet);
+  if (!walletNorm) return res.status(400).json({ error: 'Invalid wallet' });
+  const info = simulateUnstake(walletNorm);
+  syncStakingFromModule();
+  res.json({ ok: true, ...info, wallet: walletNorm });
 });
 
 // ----------------------------------------------------------
@@ -226,6 +356,7 @@ app.get('/api/debate-of-the-day', async (req, res) => {
     res.json({ topic });
   } catch (e) {
     console.error('Debate of the day error:', e);
+    recordError(e);
     res.status(500).json({ topic: 'Is Bitcoin a good store of value?' });
   }
 });
@@ -272,8 +403,38 @@ app.post('/api/card', cardLimiter, async (req, res) => {
     res.send(pngBuffer);
   } catch (err) {
     console.error('Card generation error:', err);
+    recordError(err);
     res.status(500).json({ error: 'Failed to generate card' });
   }
+});
+
+// ----------------------------------------------------------
+// Public metrics API + dashboard (Phase 4 transparency)
+// ----------------------------------------------------------
+const metricsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: isProd ? 120 : 300,
+  message: { error: 'Too many metrics requests.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+app.get('/api/metrics', metricsLimiter, (req, res) => {
+  const n = Math.min(50, Math.max(0, parseInt(req.query.recent, 10) || 12));
+  res.json({
+    ...getPublicMetrics(),
+    recentTopics: n > 0 ? getRecentTopics(n) : []
+  });
+});
+
+// Recent topics only (for dashboards that split requests)
+app.get('/api/metrics/topics', metricsLimiter, (req, res) => {
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 10));
+  res.json(getRecentTopics(limit));
+});
+
+app.get('/metrics', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'metrics.html'));
 });
 
 // ----------------------------------------------------------
