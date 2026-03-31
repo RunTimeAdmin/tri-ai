@@ -23,19 +23,19 @@ function isCryptoTopic(topic) {
   return CRYPTO_KEYWORDS.some(kw => lower.includes(kw));
 }
 
-function truncateText(text, maxLen = 280) {
+function truncateText(text, maxLen = 450) {
   if (!text || text.length <= maxLen) return text || '';
   return text.slice(0, maxLen - 3).trim() + '…';
 }
 
 // Truncate list item for card (fit on one line)
-function truncateItem(text, maxLen = 55) {
+function truncateItem(text, maxLen = 90) {
   if (!text || text.length <= maxLen) return text || '';
   return text.slice(0, maxLen - 3).trim() + '…';
 }
 
 // Max list items to show on card (avoids cut-off)
-const MAX_LIST_ITEMS = 6;
+const MAX_LIST_ITEMS = 8;
 
 // Optional LLM summarization — returns short "answer block" when keys available
 async function summarizeVerdictForCard(verdict, topic, serverKeys) {
@@ -54,7 +54,7 @@ async function summarizeVerdictForCard(verdict, topic, serverKeys) {
   const authHeader = provider === 'gemini' ? null : `Bearer ${config.key}`;
   const url = provider === 'gemini' ? `${config.baseUrl}?key=${config.key}` : config.baseUrl;
 
-  const prompt = `Summarize this debate verdict in 2-3 short sentences. Focus on the ACTUAL ANSWER/DECISION — what did the agents conclude? If there's a ranked list or recommendations, include the top 5 as a brief numbered list. Be definitive and specific. Output format: first 1-2 sentences with the core conclusion, then "Top picks:" followed by numbered items if applicable. Max 450 characters total. No preamble.
+  const prompt = `Summarize this debate verdict in 3-4 sentences. Focus on the ACTUAL ANSWER/DECISION — what did the agents conclude? If there's a ranked list or recommendations, include the top 5-7 as a brief numbered list. Be definitive and specific. Output format: first 2-3 sentences with the core conclusion, then "Top picks:" followed by numbered items if applicable. Max 700 characters total. No preamble.
 
 VERDICT:
 ${verdict.slice(0, 4000)}
@@ -141,7 +141,7 @@ function extractCardContent(verdict, summarizedAnswer = null) {
       const lastSpace = summary.lastIndexOf(' ', 320);
       if (lastSpace > 200) summary = summary.slice(0, lastSpace);
     }
-    summary = truncateText(summary, 280);
+    summary = truncateText(summary, 450);
   }
 
   const convMatch = stripped.match(/Overall Conviction[:\s]*(\w+(?:\s+\w+)?)/i)
@@ -249,9 +249,10 @@ async function generateCard(topic, verdict, summarizedAnswer = null) {
                 type: 'div',
                 props: {
                   style: {
-                    fontSize: listItems.length ? 14 : 18,
+                    fontSize: listItems.length ? 16 : 20,
                     color: '#e2e8f0',
-                    lineHeight: 1.35
+                    lineHeight: 1.4,
+                    marginBottom: 12
                   },
                   children: summary || fallback
                 }
@@ -269,11 +270,11 @@ async function generateCard(topic, verdict, summarizedAnswer = null) {
                     type: 'div',
                     props: {
                       style: {
-                        fontSize: 14,
+                        fontSize: 15,
                         color: '#94a3b8',
-                        lineHeight: 1.3,
+                        lineHeight: 1.35,
                         display: 'flex',
-                        gap: 6
+                        gap: 8
                       },
                       children: [
                         { type: 'span', props: { style: { color: '#06b6d4', fontWeight: 600, flexShrink: 0 }, children: `${i + 1}.` } },
