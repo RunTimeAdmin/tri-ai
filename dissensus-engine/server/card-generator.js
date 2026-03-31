@@ -54,7 +54,7 @@ async function summarizeVerdictForCard(verdict, topic, serverKeys) {
   const authHeader = provider === 'gemini' ? null : `Bearer ${config.key}`;
   const url = provider === 'gemini' ? `${config.baseUrl}?key=${config.key}` : config.baseUrl;
 
-  const prompt = `Summarize this debate verdict in 3-4 sentences. Focus on the ACTUAL ANSWER/DECISION — what did the agents conclude? If there's a ranked list or recommendations, include the top 5-7 as a brief numbered list. Be definitive and specific. Output format: first 2-3 sentences with the core conclusion, then "Top picks:" followed by numbered items if applicable. Max 700 characters total. No preamble.
+  const prompt = `Summarize this debate verdict in 3-4 sentences. Focus on the ACTUAL ANSWER/DECISION — what did the agents conclude? If there's a ranked list or recommendations, include the top 8 as a brief numbered list. Be definitive and specific. Output format: first 2-3 sentences with the core conclusion, then "Top picks:" followed by numbered items if applicable. Max 800 characters total. No preamble.
 
 VERDICT:
 ${verdict.slice(0, 4000)}
@@ -98,10 +98,10 @@ function extractCardContent(verdict, summarizedAnswer = null) {
     const topPicksIdx = lines.findIndex(l => /top picks?:/i.test(l));
     if (topPicksIdx >= 0) {
       const pickLines = lines.slice(topPicksIdx + 1).map(l => l.replace(/^\s*\d+[.)]\s*/, '').trim()).filter(l => l.length > 2);
-      listItems = pickLines.slice(0, MAX_LIST_ITEMS).map(t => truncateItem(t, 55));
+      listItems = pickLines.slice(0, MAX_LIST_ITEMS).map(t => truncateItem(t, 90));
     }
     const paraLines = lines.slice(0, topPicksIdx >= 0 ? topPicksIdx : lines.length).join(' ').trim();
-    summary = truncateText(paraLines || summarizedAnswer, 280);
+    summary = truncateText(paraLines || summarizedAnswer, 450);
   }
 
   if (listItems.length === 0 || !summary) {
@@ -110,7 +110,7 @@ function extractCardContent(verdict, summarizedAnswer = null) {
     if (listMatch) {
       const block = listMatch[1].trim();
       listItems = block.split(/\n/).map(line => line.replace(/^\s*[-*\d.)]+\s*/, '').trim()).filter(Boolean)
-        .slice(0, MAX_LIST_ITEMS).map(t => truncateItem(t, 55));
+        .slice(0, MAX_LIST_ITEMS).map(t => truncateItem(t, 90));
     }
   }
 
@@ -121,7 +121,7 @@ function extractCardContent(verdict, summarizedAnswer = null) {
       listItems = block.split(/\n/).map(line => {
         const clean = line.replace(/^\s*[-*\d.)]+\s*/, '').replace(/\s*—\s*Confidence[^\n]*/i, '').trim();
         return clean;
-      }).filter(l => l.length > 5).slice(0, MAX_LIST_ITEMS).map(t => truncateItem(t, 55));
+      }).filter(l => l.length > 5).slice(0, MAX_LIST_ITEMS).map(t => truncateItem(t, 90));
     }
   }
 
