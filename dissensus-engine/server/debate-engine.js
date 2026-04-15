@@ -64,20 +64,30 @@ class DebateEngine {
       ...messages
     ];
 
-    const response = await fetch(this.baseUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': this.provider.authHeader(this.apiKey)
-      },
-      body: JSON.stringify({
-        model: this.model,
-        messages: fullMessages,
-        stream: true,
-        temperature: 0.8,
-        max_tokens: 1500
-      })
-    });
+    // Abort controller for per-call timeout (90 seconds)
+    const callTimeout = new AbortController();
+    const timeoutId = setTimeout(() => callTimeout.abort(), 90000);
+
+    let response;
+    try {
+      response = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': this.provider.authHeader(this.apiKey)
+        },
+        body: JSON.stringify({
+          model: this.model,
+          messages: fullMessages,
+          stream: true,
+          temperature: 0.8,
+          max_tokens: 1000
+        }),
+        signal: callTimeout.signal
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       const err = await response.text();

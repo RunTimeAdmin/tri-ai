@@ -285,9 +285,9 @@ async function startDebate() {
 
   const rawText = { cipher: {}, nova: {}, prism: {} };
 
-  // Abort controller — auto-cancel if debate takes > 5 minutes
+  // Abort controller — auto-cancel if debate takes > 10 minutes
   const controller = new AbortController();
-  const debateTimeout = setTimeout(() => controller.abort(), 5 * 60 * 1000);
+  const debateTimeout = setTimeout(() => controller.abort(), 10 * 60 * 1000);
 
   try {
     const res = await fetch(streamUrl, { signal: controller.signal });
@@ -324,7 +324,7 @@ async function startDebate() {
     debateComplete();
   } catch (e) {
     const msg = e.name === 'AbortError'
-      ? 'Debate timed out (5 min limit). Please try a shorter topic or different provider.'
+      ? 'Debate timed out (10 min limit). Please try a shorter topic or different provider.'
       : (e.message || 'Connection failed. Check your API key, or wait a minute if you hit the rate limit (10 debates/min).');
     debateError(msg);
   } finally {
