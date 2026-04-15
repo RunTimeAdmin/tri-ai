@@ -1,7 +1,7 @@
 {
-  "name": "Dissensus — $DISS",
+  "name": "Dissensus",
   "short_name": "Dissensus",
-  "description": "Where Disagreement Forges Truth. Three AI agents debate any topic. $DISS on Solana.",
+  "description": "Where Disagreement Forges Truth. Three AI agents debate any topic.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

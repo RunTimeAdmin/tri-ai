@@ -11,7 +11,6 @@ let currentPhase = 0;
 let eventSource = null;
 let serverKeys = {}; // Which providers have server-side API keys
 let lastDebateTopic = ''; // For Share Card
-let stakingEnforce = false; // Server STAKING_ENFORCE — wallet required for debates
 
 const agentPhaseContent = {
   cipher: {},
@@ -225,16 +224,6 @@ async function startDebate() {
     return;
   }
 
-  if (stakingEnforce) {
-    const w = getStakingWallet();
-    if (!w || w.length < 32) {
-      alert('This server requires a wallet for debates. Open Simulated staking, paste your pubkey, and click Save.');
-      $('stakingPanel')?.setAttribute('open', '');
-      $('stakingWalletInput')?.focus();
-      return;
-    }
-  }
-
   if (!topic) {
     alert('Please enter a debate topic.');
     if (topicInput) topicInput.focus();
@@ -273,9 +262,7 @@ async function startDebate() {
 
   // Preflight validation (EventSource can't show 400 error messages)
   try {
-    const wallet = getStakingWallet();
     const validateBody = { topic, apiKey, provider, model };
-    if (wallet.length >= 32) validateBody.wallet = wallet;
 
     const validateRes = await fetch('/api/debate/validate', {
       method: 'POST',
@@ -294,8 +281,6 @@ async function startDebate() {
   // Connect to SSE stream using fetch (better error handling than EventSource)
   const params = new URLSearchParams({ topic, provider, model });
   if (apiKey) params.set('apiKey', apiKey);
-  const w = getStakingWallet();
-  if (w.length >= 32) params.set('wallet', w);
   const streamUrl = `/api/debate/stream?${params.toString()}`;
 
   const rawText = { cipher: {}, nova: {}, prism: {} };
@@ -433,7 +418,6 @@ function debateComplete() {
   $('btnSpinner').classList.add('hidden');
   setHeaderStatus(false, 'Debate complete');
   for (let i = 1; i <= 4; i++) setPhase(i, 'done');
-  refreshStakingStatus();
 }
 
 function debateError(message) {
@@ -469,102 +453,6 @@ function resetDebateUI() {
 function setTopic(text) {
   const el = $('topicInput');
   if (el) { el.value = text; el.focus(); }
-}
-
-// --- Simulated staking ---
-function getStakingWallet() {
-  const inp = $('stakingWalletInput');
-  const v = (inp && inp.value || localStorage.getItem('dissensus_wallet') || '').trim();
-  return v;
-}
-
-function saveStakingWallet() {
-  const inp = $('stakingWalletInput');
-  const v = (inp && inp.value || '').trim();
-  if (v.length >= 32 && v.length <= 48) {
-    localStorage.setItem('dissensus_wallet', v);
-    refreshStakingStatus();
-  } else {
-    alert('Paste a valid Solana wallet address (32–48 characters).');
-  }
-}
-
-async function refreshStakingStatus() {
-  const statusEl = $('stakingStatusText');
-  const badge = $('stakingTierBadge');
-  const w = getStakingWallet();
-  if (!w || w.length < 32) {
-    if (badge) badge.textContent = '—';
-    if (statusEl) statusEl.textContent = 'Enter wallet and click Refresh.';
-    return;
-  }
-  try {
-    const res = await fetch(`/api/staking/status?wallet=${encodeURIComponent(w)}`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || res.status);
-    if (badge) badge.textContent = data.tier || 'FREE';
-    const rem = data.debatesRemaining;
-    const remStr = rem === 'unlimited' ? 'unlimited' : rem;
-    if (statusEl) {
-      statusEl.innerHTML = `Tier <strong>${data.tier}</strong> · Staked (sim): <strong>${(data.staked || 0).toLocaleString()}</strong> $DISS<br>Debates today: ${data.debatesUsedToday || 0} · Remaining: <strong>${remStr}</strong>`;
-    }
-  } catch (e) {
-    if (statusEl) statusEl.textContent = 'Could not load status: ' + (e.message || 'error');
-    if (badge) badge.textContent = '?';
-  }
-}
-
-async function doSimulateStake() {
-  const w = getStakingWallet();
-  if (!w || w.length < 32) {
-    alert('Save a wallet address first.');
-    return;
-  }
-  const amt = $('stakingAmountInput') && $('stakingAmountInput').value;
-  const n = amt === '' || amt == null ? 0 : Number(amt);
-  try {
-    const res = await fetch('/api/staking/stake', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wallet: w, amount: n })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Stake failed');
-    await refreshStakingStatus();
-  } catch (e) {
-    alert(e.message || 'Stake failed');
-  }
-}
-
-async function doSimulateUnstake() {
-  const w = getStakingWallet();
-  if (!w || w.length < 32) return;
-  try {
-    const res = await fetch('/api/staking/unstake', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wallet: w })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Unstake failed');
-    await refreshStakingStatus();
-  } catch (e) {
-    alert(e.message || 'Unstake failed');
-  }
-}
-
-async function loadStakingTiers() {
-  const ul = $('stakingTiersList');
-  if (!ul) return;
-  try {
-    const res = await fetch('/api/staking/tiers');
-    const data = await res.json();
-    ul.innerHTML = (data.tiers || []).map(t =>
-      `<li><strong>${t.name}</strong> — min ${Number(t.minStake).toLocaleString()} $DISS · ${t.debatesPerDay} debates/day · ${(t.features || []).join(', ')}</li>`
-    ).join('');
-  } catch (e) {
-    ul.innerHTML = '<li>Could not load tiers.</li>';
-  }
 }
 
 // Debate of the Day
@@ -646,18 +534,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (res.ok) {
       const cfg = await res.json();
       serverKeys = cfg.serverKeys || {};
-      stakingEnforce = !!cfg.stakingEnforce;
-      const enforceMsg = $('stakingEnforceMsg');
-      if (enforceMsg) enforceMsg.classList.toggle('hidden', !stakingEnforce);
     }
   } catch (e) {
     console.warn('Could not fetch /api/config:', e);
   }
-
-  const savedWallet = localStorage.getItem('dissensus_wallet') || '';
-  if ($('stakingWalletInput') && savedWallet) $('stakingWalletInput').value = savedWallet;
-  loadStakingTiers();
-  refreshStakingStatus();
 
   // Restore saved provider
   const savedProvider = localStorage.getItem('dissensus_provider') || 'deepseek';

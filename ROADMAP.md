@@ -1,6 +1,6 @@
-# Dissensus & $DISS — Product Roadmap
+# Dissensus — Product Roadmap
 
-> **Vision:** Meme coin with real utility. $DISS launches with virality, evolves into the access key for the AI debate platform, then governance for its future.
+> **Vision:** AI-powered dialectical debate platform. Three AI agents engage in structured, truth-seeking argumentation to analyze complex topics from multiple perspectives.
 
 ---
 
@@ -10,53 +10,42 @@
 |-------|-------|----------|
 | **1** | Launch & Community | Q3 2025 → Q1 2026 |
 | **2** | Platform Live | Q1–Q2 2026 |
-| **3** | Premium & Burn | Q2–Q3 2026 |
-| **4** | Governance | Q3 2026+ |
+| **3** | Premium Features | Q2–Q3 2026 |
+| **4** | Scale & Ecosystem | Q3 2026+ |
 
 ---
 
 ## Phase 1 — Launch & Community
 
-**Goal:** Meme coin launch, brand awareness, community growth.
-
-### Token
-- [x] $DISS token creation on pump.fun
-- [x] Fair launch (no pre-mine, creator buys on curve)
-- [x] 1B supply, LP burn on Raydium migration
-- [ ] Contract address live & verified
-- [ ] Raydium migration complete
+**Goal:** Brand awareness, community growth, platform beta.
 
 ### Website & Brand
 - [x] dissensus.fun landing page
-- [x] $DISS branding, tokenomics, roadmap
-- [x] "Get $DISS'd" positioning
-- [x] Launch App / Buy $DISS CTAs
-- [ ] Final pump.fun & social links
-- [ ] Contract address bar (copy CA)
+- [x] Dissensus branding and positioning
+- [x] "3 AI Minds. 1 Truth." positioning
+- [x] Launch App CTAs
+- [ ] Final social links
 
 ### Community
 - [ ] X/Twitter: @dissensus or similar
 - [ ] Telegram group
-- [ ] First 1,000 holders
-- [ ] Meme campaign kickoff
+- [ ] Community growth campaign
 
 ### Status
-**Current:** Pre-launch or early launch. Landing page ready. App deployed on VPS (app.dissensus.fun).
+**Current:** Landing page ready. App deployed on VPS (app.dissensus.fun).
 
 ---
 
 ## Phase 2 — Platform Live
 
-**Goal:** Dissensus AI debate engine live. $DISS branding in app. Optional token-gating.
+**Goal:** Dissensus AI debate engine fully operational.
 
 ### App (dissensus-engine)
 - [x] VPS deployment (app.dissensus.fun)
 - [x] DeepSeek integration (server-side API key)
 - [x] Production hardening (rate limit, security, graceful shutdown)
-- [ ] $DISS branding in app UI (Phase 1 integration)
-- [ ] "Buy $DISS" link in app
-- [ ] Optional: Phantom wallet connect
-- [ ] Optional: Token-gate (hold X $DISS for access)
+- [ ] Dissensus branding in app UI
+- [ ] User accounts and session management
 
 ### Website
 - [ ] DNS: app.dissensus.fun → VPS
@@ -73,28 +62,23 @@
 - [ ] OpenAI integration (if needed)
 
 ### Status
-**Target:** Q1–Q2 2026. App is deployable; add branding and optional wallet/token-gate.
+**Target:** Q1–Q2 2026. App is deployable; add branding and user features.
 
 ---
 
-## Phase 3 — Premium & Burn Utility
+## Phase 3 — Premium Features
 
-**Goal:** $DISS becomes burn token for premium features.
+**Goal:** Advanced features for power users.
 
 ### Premium Features
-- [ ] Deep Research Mode (web search + debate) — burn $DISS per query
+- [ ] Deep Research Mode (web search + debate)
 - [ ] Custom agent personalities (user-defined roles)
 - [ ] Private debate sessions (save/share)
-- [ ] API access for developers (burn or subscription)
-
-### Burn Mechanics
-- [ ] On-chain burn for premium actions
-- [ ] Burn tracker / dashboard
-- [ ] Revenue share to LP or buyback
+- [ ] API access for developers
 
 ### Growth
 - [ ] Mobile-optimized UI
-- [ ] Partnerships (crypto media, CT influencers)
+- [ ] Partnerships and integrations
 - [ ] Developer documentation
 
 ### Status
@@ -102,20 +86,18 @@
 
 ---
 
-## Phase 4 — Governance
+## Phase 4 — Scale & Ecosystem
 
-**Goal:** $DISS holders govern platform direction.
+**Goal:** Platform maturity and ecosystem expansion.
 
-### Governance
-- [ ] On-chain or snapshot voting
-- [ ] Vote on new agent personalities
-- [ ] Vote on platform features
-- [ ] Vote on provider/model additions
+### Platform Evolution
+- [ ] Community voting on new agent personalities
+- [ ] Community voting on platform features
+- [ ] Community voting on provider/model additions
 
 ### Economics
-- [ ] Revenue sharing model
-- [ ] Buyback & burn program
-- [ ] Treasury for development
+- [ ] Sustainable revenue model
+- [ ] Developer incentive program
 
 ### Scale
 - [ ] Dissensus as standard for AI-powered analysis
@@ -135,21 +117,18 @@
 | DNS + SSL for app subdomain | Pending |
 | Server-side DeepSeek API key | Ready |
 | Rate limiting, security headers | Done |
-| $DISS branding in app | Pending |
-| Wallet connect (Phantom) | Phase 2 |
-| Token-gate (balance check) | Phase 2 |
-| Burn integration | Phase 3 |
+| Dissensus branding in app | Pending |
+| User accounts | Phase 2 |
+| Premium features | Phase 3 |
 
 ---
 
 ## Quick Reference
 
 **Website:** dissensus.fun (Hostinger)  
-**App:** app.dissensus.fun (Hostinger VPS)  
-**Token:** $DISS on Solana (pump.fun → Raydium)
+**App:** app.dissensus.fun (Hostinger VPS)
 
 **Next steps:**
-1. Launch $DISS on pump.fun (if not already)
-2. Set DNS: app.dissensus.fun → VPS IP
-3. Add $DISS branding to dissensus-engine
-4. Go live and start community growth
+1. Set DNS: app.dissensus.fun → VPS IP
+2. Add Dissensus branding to dissensus-engine
+3. Go live and start community growth

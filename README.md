@@ -1,7 +1,7 @@
-# Dissensus — $DISS Meme Coin & AI Debate Platform
+# Dissensus — AI Debate Platform
 
 **3 AI Minds. 1 Truth.**  
-Multi-agent dialectical debate engine + meme coin.
+Multi-agent dialectical debate engine.
 
 ## Push to GitHub (first time)
 

@@ -1,0 +1,512 @@
+# Deployment & Operations
+
+<cite>
+**Referenced Files in This Document**
+- [VPS-DEPLOY.md](file://VPS-DEPLOY.md)
+- [DEPLOY-VPS.md](file://dissensus-engine/docs/DEPLOY-VPS.md)
+- [setup-vps.sh](file://dissensus-engine/docs/configs/setup-vps.sh)
+- [dissensus.service](file://dissensus-engine/docs/configs/dissensus.service)
+- [nginx-dissensus.conf](file://dissensus-engine/docs/configs/nginx-dissensus.conf)
+- [dissensus-nginx-ssl.conf](file://dissensus-engine/docs/configs/dissensus-nginx-ssl.conf)
+- [deploy-env-to-vps.ps1](file://dissensus-engine/deploy-env-to-vps.ps1)
+- [DEPLOY-GIT.md](file://dissensus-engine/DEPLOY-GIT.md)
+- [index.js](file://dissensus-engine/server/index.js)
+- [package.json](file://dissensus-engine/package.json)
+- [README.md](file://dissensus-engine/README.md)
+</cite>
+
+## Table of Contents
+1. [Introduction](#introduction)
+2. [Project Structure](#project-structure)
+3. [Core Components](#core-components)
+4. [Architecture Overview](#architecture-overview)
+5. [Detailed Component Analysis](#detailed-component-analysis)
+6. [Dependency Analysis](#dependency-analysis)
+7. [Performance Considerations](#performance-considerations)
+8. [Troubleshooting Guide](#troubleshooting-guide)
+9. [Conclusion](#conclusion)
+10. [Appendices](#appendices)
+
+## Introduction
+This document provides comprehensive deployment and operations guidance for the Dissensus AI Debate Engine across development and production environments. It covers VPS deployment using the included PowerShell automation, nginx reverse proxy configuration, systemd service management, SSL certificate setup with Let’s Encrypt, environment variable configuration, reverse proxy and security hardening, automated deployment pipelines, monitoring and log management, performance tuning, scaling, backups, disaster recovery, and troubleshooting. It also explains the relationship between development, staging, and production deployment targets.
+
+## Project Structure
+The deployment-related materials are primarily located under the dissensus-engine module and its docs/configs directory. The key elements include:
+- A PowerShell script to upload environment variables to a VPS
+- A comprehensive VPS deployment guide with step-by-step instructions
+- A quick-setup shell script for automating initial server provisioning
+- Nginx configuration templates for reverse proxy and SSL
+- A systemd unit file for service lifecycle management
+- Git-based deployment instructions for continuous updates
+- The Node.js server implementation that exposes SSE streaming and API endpoints
+
+```mermaid
+graph TB
+subgraph "Local Developer Workstation"
+PS["PowerShell Script<br/>deploy-env-to-vps.ps1"]
+Repo["Git Repository<br/>tri-ai"]
+end
+subgraph "Production VPS"
+Sysd["systemd Unit<br/>dissensus.service"]
+Node["Node.js Server<br/>index.js"]
+Nginx["Nginx Reverse Proxy<br/>nginx-dissensus.conf / dissensus-nginx-ssl.conf"]
+SSL["Let's Encrypt Certificate"]
+end
+PS --> Repo
+Repo --> Sysd
+Sysd --> Node
+Nginx --> Node
+SSL --> Nginx
+```
+
+**Diagram sources**
+- [deploy-env-to-vps.ps1:1-50](file://dissensus-engine/deploy-env-to-vps.ps1#L1-L50)
+- [dissensus.service:1-27](file://dissensus-engine/docs/configs/dissensus.service#L1-L27)
+- [index.js:1-481](file://dissensus-engine/server/index.js#L1-L481)
+- [nginx-dissensus.conf:1-81](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L1-L81)
+- [dissensus-nginx-ssl.conf:1-68](file://dissensus-engine/docs/configs/dissensus-nginx-ssl.conf#L1-L68)
+
+**Section sources**
+- [README.md:110-134](file://dissensus-engine/README.md#L110-L134)
+- [DEPLOY-VPS.md:1-25](file://dissensus-engine/docs/DEPLOY-VPS.md#L1-L25)
+
+## Core Components
+- Node.js server (Express) with SSE streaming for real-time debates
+- Nginx reverse proxy with security headers, gzip compression, static asset caching, and SSE-specific streaming configuration
+- systemd service for process management, auto-start, and resilience
+- SSL termination via Certbot/Let’s Encrypt
+- Environment-driven configuration for providers, staking enforcement, and reverse proxy trust
+- Automated deployment via PowerShell and Git pull
+
+**Section sources**
+- [index.js:26-56](file://dissensus-engine/server/index.js#L26-L56)
+- [index.js:220-311](file://dissensus-engine/server/index.js#L220-L311)
+- [nginx-dissensus.conf:11-21](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L11-L21)
+- [nginx-dissensus.conf:42-60](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L42-L60)
+- [dissensus.service:1-27](file://dissensus-engine/docs/configs/dissensus.service#L1-L27)
+- [dissensus-nginx-ssl.conf:21-57](file://dissensus-engine/docs/configs/dissensus-nginx-ssl.conf#L21-L57)
+- [README.md:136-151](file://dissensus-engine/README.md#L136-L151)
+
+## Architecture Overview
+The production architecture uses Nginx as a reverse proxy terminating TLS, applying security headers, compressing responses, and serving static assets. Nginx forwards API and SSE traffic to the Node.js server on localhost. The systemd service manages the Node.js process, ensuring it starts on boot and restarts on failure. SSL certificates are provisioned and renewed automatically via Certbot.
+
+```mermaid
+graph TB
+Internet["Internet"]
+CF["Cloudflare / CDN (Optional)"]
+Nginx["Nginx (Reverse Proxy)<br/>TLS, Headers, Compression, Static Assets"]
+Node["Node.js Server (Express)<br/>SSE Streaming, APIs"]
+Providers["AI Providers<br/>DeepSeek / Gemini / OpenAI"]
+Internet --> CF --> Nginx
+Nginx --> Node
+Node --> Providers
+```
+
+**Diagram sources**
+- [DEPLOY-VPS.md:711-740](file://dissensus-engine/docs/DEPLOY-VPS.md#L711-L740)
+- [nginx-dissensus.conf:1-81](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L1-L81)
+- [dissensus-nginx-ssl.conf:1-68](file://dissensus-engine/docs/configs/dissensus-nginx-ssl.conf#L1-L68)
+- [index.js:220-311](file://dissensus-engine/server/index.js#L220-L311)
+
+## Detailed Component Analysis
+
+### VPS Deployment with PowerShell (.env Automation)
+- Purpose: Automate uploading a local .env file to the VPS and validate placeholders before transfer.
+- Behavior:
+  - Creates .env from .env.example if missing locally.
+  - Prompts for editing if placeholders are detected.
+  - Validates that placeholders are replaced before proceeding.
+  - Uses scp to upload .env to the VPS target path.
+  - Provides post-upload guidance to restart the service.
+
+```mermaid
+sequenceDiagram
+participant Dev as "Developer"
+participant PS as "PowerShell Script<br/>deploy-env-to-vps.ps1"
+participant VPS as "VPS Target"
+Dev->>PS : Run script
+PS->>PS : Check .env existence and copy .env.example if missing
+PS->>PS : Detect placeholder keys
+PS->>Dev : Prompt to edit .env
+Dev-->>PS : Save .env with real keys
+PS->>PS : Validate absence of placeholders
+PS->>VPS : Upload .env via scp
+VPS-->>PS : Upload result
+PS-->>Dev : Print success and restart instructions
+```
+
+**Diagram sources**
+- [deploy-env-to-vps.ps1:1-50](file://dissensus-engine/deploy-env-to-vps.ps1#L1-L50)
+
+**Section sources**
+- [deploy-env-to-vps.ps1:1-50](file://dissensus-engine/deploy-env-to-vps.ps1#L1-L50)
+
+### Initial VPS Setup (Automated Shell Script)
+- Purpose: Provision a fresh Ubuntu VPS with Node.js, Nginx, Certbot, UFW, and systemd service.
+- Behavior:
+  - Updates system packages and creates a non-root user with sudo access.
+  - Installs Node.js 20 LTS and enables Nginx.
+  - Installs Certbot and configures UFW firewall rules for SSH, HTTP, and HTTPS.
+  - Writes the systemd unit file and Nginx site configuration.
+  - Prints manual next steps for code upload, installation, DNS, and SSL issuance.
+
+```mermaid
+flowchart TD
+Start(["Run setup-vps.sh as root"]) --> Update["Update system packages"]
+Update --> CreateUser["Create 'dissensus' user and grant sudo"]
+CreateUser --> InstallNode["Install Node.js 20 LTS"]
+InstallNode --> InstallNginx["Install Nginx"]
+InstallNginx --> InstallCertbot["Install Certbot"]
+InstallCertbot --> ConfigureUFW["Configure UFW (SSH, HTTP, HTTPS)"]
+ConfigureUFW --> CreateService["Create systemd service file"]
+CreateService --> ConfigureNginx["Write Nginx site config and enable"]
+ConfigureNginx --> NextSteps["Print manual next steps"]
+NextSteps --> End(["Complete"])
+```
+
+**Diagram sources**
+- [setup-vps.sh:1-247](file://dissensus-engine/docs/configs/setup-vps.sh#L1-L247)
+
+**Section sources**
+- [setup-vps.sh:1-247](file://dissensus-engine/docs/configs/setup-vps.sh#L1-L247)
+
+### Manual VPS Deployment (Step-by-Step Guide)
+- Covers prerequisites, connecting to VPS, initial setup, installing Node.js, deploying the engine, configuring environment variables, creating a systemd service, installing and configuring Nginx, setting up SSL with Let’s Encrypt, pointing domains, firewall configuration, verification, maintenance, and troubleshooting.
+
+```mermaid
+flowchart TD
+A["Prerequisites Met"] --> B["Connect to VPS"]
+B --> C["Initial Setup (user, timezone)"]
+C --> D["Install Node.js 20 LTS"]
+D --> E["Deploy Engine (upload/unpack)"]
+E --> F["Configure .env (API keys)"]
+F --> G["Create systemd service"]
+G --> H["Install & configure Nginx"]
+H --> I["Set up SSL (Certbot)"]
+I --> J["Point DNS (subdomain)"]
+J --> K["Firewall (UFW)"]
+K --> L["Verify (health, providers, streaming)"]
+L --> M["Monitor & maintain"]
+```
+
+**Diagram sources**
+- [DEPLOY-VPS.md:26-523](file://dissensus-engine/docs/DEPLOY-VPS.md#L26-L523)
+
+**Section sources**
+- [DEPLOY-VPS.md:26-523](file://dissensus-engine/docs/DEPLOY-VPS.md#L26-L523)
+
+### Nginx Reverse Proxy Configuration
+- Purpose: Terminate TLS, apply security headers, compress responses, cache static assets, and proxy API and SSE endpoints to the Node.js server.
+- Key elements:
+  - Security headers (frame options, content type options, XSS protection, referrer policy).
+  - Gzip compression with targeted MIME types.
+  - Static asset caching via aliases and expires directives.
+  - SSE streaming block disables buffering and sets long timeouts.
+  - API and root location blocks forward headers and connection details.
+
+```mermaid
+flowchart TD
+Req["Incoming Request"] --> TLS{"HTTPS?"}
+TLS --> |Yes| SSL["Serve SSL (Certbot)"]
+TLS --> |No| HTTP301["HTTP to HTTPS redirect"]
+SSL --> Sec["Apply security headers"]
+Sec --> Static{"Static asset?"}
+Static --> |Yes| Cache["Serve cached static asset"]
+Static --> |No| APIorSSE{"API or SSE?"}
+APIorSSE --> |SSE| SSEBlock["Disable buffering, long timeouts"]
+APIorSSE --> |API| APIBlock["Proxy to Node.js"]
+SSEBlock --> Proxy["proxy_pass to 127.0.0.1:3000"]
+APIBlock --> Proxy
+Cache --> End["Response Sent"]
+Proxy --> End
+```
+
+**Diagram sources**
+- [nginx-dissensus.conf:11-21](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L11-L21)
+- [nginx-dissensus.conf:42-60](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L42-L60)
+- [nginx-dissensus.conf:62-81](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L62-L81)
+- [dissensus-nginx-ssl.conf:21-57](file://dissensus-engine/docs/configs/dissensus-nginx-ssl.conf#L21-L57)
+
+**Section sources**
+- [nginx-dissensus.conf:1-81](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L1-L81)
+- [dissensus-nginx-ssl.conf:1-68](file://dissensus-engine/docs/configs/dissensus-nginx-ssl.conf#L1-L68)
+
+### Systemd Service Management
+- Purpose: Manage the Node.js process with auto-start, restart on failure, and hardened resource controls.
+- Key elements:
+  - User/group isolation, working directory, and ExecStart pointing to the server entry.
+  - Restart policy and delays.
+  - Logging to syslog with a dedicated identifier.
+  - Environment variables and EnvironmentFile for .env loading.
+  - Security enhancements: NoNewPrivileges, ProtectSystem, ProtectHome, and ReadWritePaths.
+
+```mermaid
+classDiagram
+class DissensusService {
++Description
++After=network.target
++Type=simple
++User=dissensus
++Group=dissensus
++WorkingDirectory
++ExecStart=/usr/bin/node server/index.js
++Restart=on-failure
++RestartSec=10
++StandardOutput=syslog
++StandardError=syslog
++SyslogIdentifier=dissensus
++Environment=NODE_ENV=production
++Environment=PORT=3000
++EnvironmentFile=.env
++NoNewPrivileges=true
++ProtectSystem=strict
++ProtectHome=read-only
++ReadWritePaths=/home/dissensus/dissensus-engine
+}
+```
+
+**Diagram sources**
+- [dissensus.service:1-27](file://dissensus-engine/docs/configs/dissensus.service#L1-L27)
+
+**Section sources**
+- [dissensus.service:1-27](file://dissensus-engine/docs/configs/dissensus.service#L1-L27)
+
+### SSL Certificate Setup with Let’s Encrypt
+- Purpose: Provision and automate renewal of free TLS certificates for the subdomain.
+- Behavior:
+  - Install Certbot with Nginx plugin.
+  - Obtain certificate for the subdomain.
+  - Certbot modifies Nginx configuration and sets up automatic renewal.
+
+```mermaid
+sequenceDiagram
+participant Admin as "Admin"
+participant Certbot as "Certbot"
+participant Nginx as "Nginx"
+participant CA as "Let's Encrypt"
+Admin->>Certbot : Run certbot --nginx -d app.dissensus.fun
+Certbot->>CA : Request certificate
+CA-->>Certbot : Issue certificate
+Certbot->>Nginx : Inject SSL directives and reload
+Certbot-->>Admin : Confirm renewal setup
+```
+
+**Diagram sources**
+- [DEPLOY-VPS.md:389-412](file://dissensus-engine/docs/DEPLOY-VPS.md#L389-L412)
+- [dissensus-nginx-ssl.conf:51-57](file://dissensus-engine/docs/configs/dissensus-nginx-ssl.conf#L51-L57)
+
+**Section sources**
+- [DEPLOY-VPS.md:389-412](file://dissensus-engine/docs/DEPLOY-VPS.md#L389-L412)
+- [dissensus-nginx-ssl.conf:51-57](file://dissensus-engine/docs/configs/dissensus-ssl.conf#L51-L57)
+
+### Environment Variable Configuration
+- Purpose: Control runtime behavior including provider keys, staking enforcement, reverse proxy trust, and Solana settings.
+- Key variables:
+  - PORT, SOLANA_RPC_URL, DISS_TOKEN_MINT, SOLANA_CLUSTER, DISS_STAKING_PROGRAM_ID, TRUST_PROXY, TRUST_PROXY_HOPS.
+- Server behavior:
+  - Loads .env via dotenv.
+  - Enables trust proxy based on environment for accurate client IP detection behind Nginx.
+  - Exposes provider availability and server-side key presence to clients.
+
+```mermaid
+flowchart TD
+EnvLoad["Load .env"] --> TrustProxy{"TRUST_PROXY set?"}
+TrustProxy --> |Yes| SetHop["Set trust proxy hops"]
+TrustProxy --> |No| DefaultTrust["Default trust proxy behavior"]
+EnvLoad --> Providers["Server-side API keys"]
+Providers --> ConfigAPI["Expose provider config to client"]
+```
+
+**Diagram sources**
+- [index.js:6-45](file://dissensus-engine/server/index.js#L6-L45)
+- [index.js:69-85](file://dissensus-engine/server/index.js#L69-L85)
+- [README.md:136-151](file://dissensus-engine/README.md#L136-L151)
+
+**Section sources**
+- [index.js:6-45](file://dissensus-engine/server/index.js#L6-L45)
+- [index.js:69-85](file://dissensus-engine/server/index.js#L69-L85)
+- [README.md:136-151](file://dissensus-engine/README.md#L136-L151)
+
+### Reverse Proxy and Security Hardening
+- Purpose: Secure and optimize traffic flow to the Node.js server.
+- Hardening measures:
+  - Security headers in Nginx configuration.
+  - Gzip compression for bandwidth savings.
+  - Static asset caching to reduce origin load.
+  - SSE streaming block disables buffering and increases timeouts.
+  - Firewall allows only SSH, HTTP, and HTTPS.
+
+```mermaid
+flowchart TD
+Proxy["Nginx"] --> Headers["Security Headers"]
+Proxy --> Compress["Gzip Compression"]
+Proxy --> Static["Static Asset Caching"]
+Proxy --> SSE["SSE Streaming (no buffering)"]
+Proxy --> API["API Proxy"]
+Proxy --> FW["UFW Allowed Ports"]
+```
+
+**Diagram sources**
+- [nginx-dissensus.conf:11-21](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L11-L21)
+- [nginx-dissensus.conf:42-60](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L42-L60)
+- [DEPLOY-VPS.md:456-492](file://dissensus-engine/docs/DEPLOY-VPS.md#L456-L492)
+
+**Section sources**
+- [nginx-dissensus.conf:11-21](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L11-L21)
+- [nginx-dissensus.conf:42-60](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L42-L60)
+- [DEPLOY-VPS.md:456-492](file://dissensus-engine/docs/DEPLOY-VPS.md#L456-L492)
+
+### Automated Deployment Pipelines
+- Git-based deployment:
+  - Clone repository on VPS, install dependencies, copy and edit .env, create systemd service, and manage updates via systemctl.
+  - Includes a helper script to automate pull, install, and restart.
+- PowerShell-based .env deployment:
+  - Local automation to upload .env to VPS and prompt for key replacement.
+
+```mermaid
+sequenceDiagram
+participant Dev as "Developer"
+participant VPS as "VPS"
+participant Git as "Git"
+participant Sysd as "systemd"
+Dev->>VPS : Run deploy script or Git pull
+VPS->>Git : git pull
+VPS->>VPS : npm install --production
+VPS->>Sysd : systemctl restart dissensus
+Sysd-->>VPS : Service restarted
+```
+
+**Diagram sources**
+- [DEPLOY-GIT.md:82-116](file://dissensus-engine/DEPLOY-GIT.md#L82-L116)
+- [VPS-DEPLOY.md:3-10](file://VPS-DEPLOY.md#L3-L10)
+
+**Section sources**
+- [DEPLOY-GIT.md:1-116](file://dissensus-engine/DEPLOY-GIT.md#L1-L116)
+- [VPS-DEPLOY.md:3-10](file://VPS-DEPLOY.md#L3-L10)
+
+### Monitoring, Logs, and Verification
+- Monitoring:
+  - systemd journal for application logs.
+  - Nginx access and error logs.
+  - System metrics (disk, memory, CPU).
+- Verification:
+  - Health endpoints for Node.js and provider availability.
+  - Live debate testing to confirm SSE streaming.
+
+```mermaid
+flowchart TD
+Mon["Monitoring"] --> Journald["journalctl -u dissensus -f"]
+Mon --> NginxLogs["tail /var/log/nginx/*.log"]
+Mon --> Metrics["df -h, free -h, htop"]
+Verify["Verification"] --> Health["curl /api/health"]
+Verify --> Providers["curl /api/providers"]
+Verify --> SSE["Watch SSE stream"]
+```
+
+**Diagram sources**
+- [DEPLOY-VPS.md:536-598](file://dissensus-engine/docs/DEPLOY-VPS.md#L536-L598)
+- [DEPLOY-VPS.md:495-533](file://dissensus-engine/docs/DEPLOY-VPS.md#L495-L533)
+
+**Section sources**
+- [DEPLOY-VPS.md:536-598](file://dissensus-engine/docs/DEPLOY-VPS.md#L536-L598)
+- [DEPLOY-VPS.md:495-533](file://dissensus-engine/docs/DEPLOY-VPS.md#L495-L533)
+
+### Relationship Between Environments (Development, Staging, Production)
+- Development:
+  - Local Node.js server with optional .env for API keys.
+  - No reverse proxy or SSL required.
+- Staging:
+  - Similar to production but with reduced scale and possibly self-signed or staging certificates.
+- Production:
+  - Nginx reverse proxy, systemd service, Let’s Encrypt SSL, firewall hardening, and automated deployments.
+
+[No sources needed since this section provides conceptual guidance]
+
+## Dependency Analysis
+- Node.js server depends on:
+  - dotenv for environment variables.
+  - express for routing and middleware.
+  - helmet for security headers.
+  - express-rate-limit for abuse prevention.
+  - SSE streaming for real-time debate output.
+- Nginx depends on:
+  - Correct proxy headers and timeouts for SSE.
+  - SSL configuration for HTTPS.
+- Systemd depends on:
+  - Correct ExecStart path and EnvironmentFile.
+  - Proper permissions and working directory.
+
+```mermaid
+graph LR
+Env[".env"] --> Node["index.js"]
+Node --> SSE["SSE Streaming"]
+Node --> APIs["API Endpoints"]
+Nginx["Nginx"] --> Node
+SSL["Let's Encrypt"] --> Nginx
+Sysd["systemd"] --> Node
+```
+
+**Diagram sources**
+- [index.js:6-28](file://dissensus-engine/server/index.js#L6-L28)
+- [nginx-dissensus.conf:42-81](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L42-L81)
+- [dissensus.service:10-18](file://dissensus-engine/docs/configs/dissensus.service#L10-L18)
+
+**Section sources**
+- [package.json:10-27](file://dissensus-engine/package.json#L10-L27)
+- [index.js:6-28](file://dissensus-engine/server/index.js#L6-L28)
+
+## Performance Considerations
+- SSE streaming:
+  - Ensure Nginx disables buffering for the SSE endpoint to avoid client-side delays.
+  - Increase proxy timeouts for long debates.
+- Compression and caching:
+  - Enable gzip and cache static assets to reduce origin load and latency.
+- Resource limits:
+  - Monitor memory and CPU; add swap if needed on constrained VPS instances.
+- Provider selection:
+  - Choose providers/models based on cost/performance trade-offs.
+
+[No sources needed since this section provides general guidance]
+
+## Troubleshooting Guide
+Common issues and resolutions:
+- 502 Bad Gateway:
+  - Check systemd service status and restart if needed; review recent logs.
+- Connection refused on port 3000:
+  - Verify the service is running and listening; start the service if not.
+- SSE streaming not working:
+  - Confirm Nginx configuration disables buffering and sets appropriate timeouts; reload Nginx after changes.
+- SSL certificate issues:
+  - Ensure subdomain points to VPS IP; verify firewall allows HTTP; retry with verbose output.
+- Out of memory:
+  - Add swap space and monitor memory usage.
+- Port changes:
+  - Update systemd and Nginx proxy_pass to match the new port.
+
+**Section sources**
+- [DEPLOY-VPS.md:601-690](file://dissensus-engine/docs/DEPLOY-VPS.md#L601-L690)
+
+## Conclusion
+The Dissensus AI Debate Engine is designed for straightforward deployment on a VPS with Nginx, systemd, and SSL automation. The included PowerShell and shell scripts streamline environment configuration and initial provisioning. By following the documented steps for reverse proxy, security hardening, monitoring, and troubleshooting, teams can operate reliable development, staging, and production environments with predictable upgrades and minimal downtime.
+
+[No sources needed since this section summarizes without analyzing specific files]
+
+## Appendices
+
+### Appendix A: Quick Reference Commands
+- Start/stop/restart service: systemctl start/stop/restart dissensus
+- View logs: journalctl -u dissensus -f
+- Restart Nginx: systemctl reload nginx
+- Test Nginx config: nginx -t
+- Renew SSL: certbot renew
+- Check firewall: ufw status
+- Disk/memory/CPU: df -h, free -h, htop
+
+**Section sources**
+- [DEPLOY-VPS.md:693-708](file://dissensus-engine/docs/DEPLOY-VPS.md#L693-L708)
+
+### Appendix B: Environment Variables Reference
+- PORT, SOLANA_RPC_URL, DISS_TOKEN_MINT, SOLANA_CLUSTER, DISS_STAKING_PROGRAM_ID, TRUST_PROXY, TRUST_PROXY_HOPS
+
+**Section sources**
+- [README.md:136-151](file://dissensus-engine/README.md#L136-L151)

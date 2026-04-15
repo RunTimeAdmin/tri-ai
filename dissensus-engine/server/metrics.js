@@ -5,8 +5,6 @@
 // Production: persist to DB / time-series store.
 // ============================================================
 
-const { getStakingAggregateMetrics } = require('./staking');
-
 const metrics = {
   totalDebates: 0,
   totalTopics: new Set(),
@@ -17,18 +15,6 @@ const metrics = {
     openai: 0,
     deepseek: 0,
     gemini: 0
-  },
-
-  staking: {
-    totalStaked: 0,
-    activeStakers: 0,
-    tierDistribution: {
-      FREE: 0,
-      BRONZE: 0,
-      SILVER: 0,
-      GOLD: 0,
-      WHALE: 0
-    }
   },
 
   recentTopics: [],
@@ -68,8 +54,6 @@ function recordDebate(topic, provider, model) {
 
   metrics.requests.total++;
   metrics.requests.successful++;
-
-  syncStakingFromModule();
 }
 
 function recordError(error) {
@@ -88,18 +72,10 @@ function resetIfNeeded() {
   }
 }
 
-function syncStakingFromModule() {
-  try {
-    const agg = getStakingAggregateMetrics();
-    updateStakingMetrics(agg.totalStaked, agg.activeStakers, agg.tierDistribution);
-  } catch (e) {
-    /* ignore */
-  }
-}
+
 
 function getPublicMetrics() {
   resetIfNeeded();
-  syncStakingFromModule();
 
   const total = metrics.requests.total;
   const successRate = total > 0
@@ -113,28 +89,14 @@ function getPublicMetrics() {
 
     providerUsage: { ...metrics.providerUsage },
 
-    staking: {
-      totalStaked: metrics.staking.totalStaked,
-      activeStakers: metrics.staking.activeStakers,
-      tierDistribution: { ...metrics.staking.tierDistribution }
-    },
-
     uptimeSeconds: Math.floor((Date.now() - metrics.startTime) / 1000),
     uptimePercent: successRate,
 
     debatesLastHour: metrics.hourlyDebates[new Date().getHours()],
 
     lastUpdated: new Date().toISOString(),
-    serverStartTime: new Date(metrics.startTime).toISOString(),
-
-    note: 'Simulated staking; on-chain volume not tracked here.'
+    serverStartTime: new Date(metrics.startTime).toISOString()
   };
-}
-
-function updateStakingMetrics(totalStaked, activeStakers, tierDistribution) {
-  metrics.staking.totalStaked = totalStaked;
-  metrics.staking.activeStakers = activeStakers;
-  metrics.staking.tierDistribution = { ...tierDistribution };
 }
 
 function getRecentTopics(limit = 10) {
@@ -145,7 +107,5 @@ module.exports = {
   recordDebate,
   recordError,
   getPublicMetrics,
-  updateStakingMetrics,
-  getRecentTopics,
-  syncStakingFromModule
+  getRecentTopics
 };

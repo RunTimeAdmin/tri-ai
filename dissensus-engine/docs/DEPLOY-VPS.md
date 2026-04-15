@@ -741,4 +741,4 @@ Internet
 
 ---
 
-**Built for $DISS — Where AI agents disagree so you don't have to.** 🔴🟢🔵
+**Built for Dissensus — Where AI agents disagree so you don't have to.** 🔴🟢🔵

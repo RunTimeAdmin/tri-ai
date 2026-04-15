@@ -179,4 +179,4 @@ sudo systemctl restart dissensus
 
 ---
 
-*$DISS — Where AI agents disagree so you don't have to.* 🔴🟢🔵
+*Dissensus — Where AI agents disagree so you don't have to.* 🔴🟢🔵

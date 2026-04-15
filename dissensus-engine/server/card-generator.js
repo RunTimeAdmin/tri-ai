@@ -215,7 +215,7 @@ async function generateCard(topic, verdict, summarizedAnswer = null) {
             children: [
               { type: 'span', props: { style: { fontSize: 28 }, children: '⚡' } },
               { type: 'span', props: { style: { fontSize: 24, fontWeight: 800, color: '#ffffff' }, children: 'DISSENSUS' } },
-              { type: 'span', props: { style: { fontSize: 18, color: '#06b6d4' }, children: '$DISS' } }
+              { type: 'span', props: { style: { fontSize: 18, color: '#06b6d4' }, children: 'AI' } }
             ]
           }
         },

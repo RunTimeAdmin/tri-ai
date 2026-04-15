@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- Dissensus v3 - CA: G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXF -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -7,15 +6,29 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>$DISS — Dissensus | Where Disagreement Forges Truth</title>
-    <meta name="description" content="Three AI agents debate any topic and forge consensus from chaos. $DISS is the meme coin evolving into the AI utility protocol.">
-    <meta property="og:title" content="$DISS — Dissensus | 3 AI Minds. 1 Truth.">
+    <title>Dissensus | Where Disagreement Forges Truth</title>
+    <meta name="description" content="Three AI agents debate any topic and forge consensus from chaos. An AI-powered debate engine.">
+    <link rel="canonical" href="https://dissensus.fun/">
+    <!-- Open Graph + Twitter/X: image URLs MUST be absolute https:// or cards won't show -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://dissensus.fun/">
+    <meta property="og:site_name" content="Dissensus">
+    <meta property="og:title" content="Dissensus | 3 AI Minds. 1 Truth.">
     <meta property="og:description" content="Three AI agents with opposing perspectives battle it out on any topic — and forge truth from the wreckage.">
-    <meta property="og:image" content="images/diss-pumpfun-token.png">
+    <meta property="og:image" content="https://dissensus.fun/images/diss-x-banner.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Dissensus — $DISS AI debate engine">
     <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@DissensusDev">
+    <meta name="twitter:creator" content="@DissensusDev">
+    <meta name="twitter:title" content="Dissensus | 3 AI Minds. 1 Truth.">
+    <meta name="twitter:description" content="Three AI agents with opposing perspectives battle it out on any topic — and forge truth from the wreckage.">
+    <meta name="twitter:image" content="https://dissensus.fun/images/diss-x-banner.png">
+    <meta name="twitter:image:alt" content="Dissensus — AI debate engine">
     <link rel="icon" type="image/png" href="images/diss-pfp.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=3">
+    <link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
 
@@ -26,7 +39,7 @@
 <!-- Navigation -->
 <nav class="nav">
     <div class="nav-logo">
-        <span>⚡</span> DISSENSUS <span class="diss">$DISS</span>
+        <span>⚡</span> DISSENSUS
     </div>
     <button class="nav-toggle" id="navToggle" aria-label="Menu" onclick="toggleMobileNav()">
         <span></span><span></span><span></span>
@@ -35,9 +48,9 @@
         <li><a href="#about" class="nav-link">About</a></li>
         <li><a href="#agents" class="nav-link">Agents</a></li>
         <li><a href="#how" class="nav-link">How It Works</a></li>
-        <li><a href="#tokenomics" class="nav-link">Tokenomics</a></li>
+        <li><a href="#platform" class="nav-link">Platform</a></li>
         <li><a href="#roadmap" class="nav-link">Roadmap</a></li>
-        <li><a href="https://pump.fun/coin/G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXFpump" class="btn-buy nav-link" target="_blank" rel="noopener noreferrer">Buy $DISS</a></li>
+
         <li><a href="https://app.dissensus.fun" class="btn-launch" target="_blank">🚀 Launch App</a></li>
     </ul>
 </nav>
@@ -49,12 +62,10 @@
     <div class="hero-glow green"></div>
     <div class="hero-glow cyan"></div>
     
-    <div class="hero-badge fade-in d1">
-        🪙 Now Live on Solana via pump.fun
-    </div>
+
     
     <h1 class="hero-title fade-in d2">
-        <span class="ticker">$DISS</span>
+        <span class="ticker">DISSENSUS</span>
     </h1>
     
     <p class="hero-subtitle fade-in d3">3 AI Minds. 1 Truth.</p>
@@ -69,21 +80,16 @@
     
     <div class="hero-cta fade-in d5">
         <a href="https://app.dissensus.fun" class="btn-launch-hero" target="_blank">🚀 Launch Debate Engine</a>
-        <a href="https://pump.fun/coin/G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXFpump" class="btn-primary" target="_blank" rel="noopener noreferrer">🪙 Buy $DISS on pump.fun</a>
         <a href="#about" class="btn-secondary">⚡ Learn More</a>
     </div>
     
-    <div class="contract-bar fade-in d6" onclick="copyContract()" id="contractBar" data-ca="G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXF">
-        <span class="label">CA:</span>
-        <span class="ca-val">G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXF</span>
-        <span class="copy-icon">📋</span>
-    </div>
+
 </header>
 
 <!-- ============ WHAT IS DISSENSUS ============ -->
 <section id="about">
     <p class="section-label">What is Dissensus?</p>
-    <h2 class="section-title">The meme coin that actually<br>does something.</h2>
+    <h2 class="section-title">AI-powered debate.<br>Truth through disagreement.</h2>
     <p class="section-desc">
         Dissensus is the first AI-powered debate engine where three autonomous agents with 
         opposing perspectives battle over any topic you throw at them — and forge consensus from chaos.
@@ -167,8 +173,8 @@
                     <path d="M33 14l-2 2" stroke="url(#grad-coin)" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
                 </svg>
             </div>
-            <h3>Meme → Utility Evolution</h3>
-            <p>$DISS launches with meme coin energy and viral potential. But the Dissensus platform gives it real utility — hold $DISS for platform access, premium features, and governance rights.</p>
+            <h3>Platform Evolution</h3>
+            <p>The Dissensus platform delivers real utility — platform access, premium features, and community governance.</p>
         </div>
         <div class="what-card">
             <div class="icon">
@@ -183,8 +189,8 @@
                     <circle cx="24" cy="12" r="2" fill="url(#grad-gov)"/>
                 </svg>
             </div>
-            <h3>Community Governed</h3>
-            <p>$DISS holders don't just hold — they govern. Vote on new agent personalities, platform features, and development priorities. Your token, your tribunal.</p>
+            <h3>Community Driven</h3>
+            <p>The community governs. Vote on new agent personalities, platform features, and development priorities. Your platform, your tribunal.</p>
         </div>
     </div>
 </section>
@@ -192,7 +198,7 @@
 <!-- ============ THE AGENTS ============ -->
 <section id="agents">
     <p class="section-label">The Three Minds</p>
-    <h2 class="section-title">Meet the agents that will<br>$DISS your thesis.</h2>
+    <h2 class="section-title">Meet the agents that will<br>challenge your thesis.</h2>
     <p class="section-desc">
         Each agent has a distinct personality, reasoning approach, and role in the debate. 
         Together, they form a system of checks and balances that no single AI can match.
@@ -276,87 +282,50 @@
     </div>
 </section>
 
-<!-- ============ TOKENOMICS ============ -->
-<section id="tokenomics">
-    <p class="section-label">Tokenomics</p>
-    <h2 class="section-title">Fair launch. Zero pre-mine.<br>100% community.</h2>
+
+
+<!-- ============ PLATFORM UTILITY ============ -->
+<section id="platform">
+    <p class="section-label">Features &amp; capabilities</p>
+    <h2 class="section-title">Shipping the AI protocol<br>in public.</h2>
     <p class="section-desc">
-        $DISS launches on pump.fun with a fair bonding curve. No insider allocation, 
-        no pre-mine, no VC dumps. The creator buys like everyone else.
+        Dissensus is building real utility around the debate engine — shareable verdicts, transparency metrics, and advanced debate features.
+        <a href="https://app.dissensus.fun" target="_blank" rel="noopener noreferrer" class="text-link">Launch the live app</a>
     </p>
-    
-    <div class="tokenomics-grid">
-        <div class="token-card">
-            <div class="token-value">1B</div>
-            <h3>Total Supply</h3>
-            <p>1,000,000,000 $DISS tokens. Fixed supply, no minting.</p>
-        </div>
-        <div class="token-card">
-            <div class="token-value">0%</div>
-            <h3>Creator Allocation</h3>
-            <p>Zero pre-mine. Creator buys on the bonding curve like everyone else. Fair launch enforced by pump.fun.</p>
-        </div>
-        <div class="token-card">
-            <div class="token-value">100%</div>
-            <h3>On Bonding Curve</h3>
-            <p>Entire supply on the pump.fun bonding curve. Organic price discovery from block one.</p>
-        </div>
-        <div class="token-card">
-            <div class="token-value">🔥</div>
-            <h3>LP Burned</h3>
-            <p>Liquidity pool tokens automatically burned on Raydium migration. Permanent, locked liquidity.</p>
-        </div>
+    <div class="utility-grid">
+        <article class="utility-card utility-live">
+            <span class="utility-badge">Live</span>
+            <h3>Phase 1 — Access tiers</h3>
+            <p>Tier system maps usage to daily debates and future perks (Free → Premium). <strong>Wallet connection</strong> in-app for personalized experience.</p>
+        </article>
+        <article class="utility-card utility-live">
+            <span class="utility-badge">Live</span>
+            <h3>Phase 2 — Shareable debate cards</h3>
+            <p>Download a <strong>Twitter-sized PNG</strong> from any verdict — branded layout, smart summary so the <strong>decision</strong> isn't cut off.</p>
+        </article>
+        <article class="utility-card utility-next">
+            <span class="utility-badge utility-badge-soon">Next</span>
+            <h3>Phase 3 — High-stakes debates</h3>
+            <p>Locked debate channels, <strong>reputation</strong> scoring, and <strong>outcome tracking</strong> for competitive, higher-signal sessions.</p>
+        </article>
+        <article class="utility-card utility-live">
+            <span class="utility-badge">Live</span>
+            <h3>Phase 4 — Metrics dashboard</h3>
+            <p>Public <a href="https://app.dissensus.fun/metrics" target="_blank" rel="noopener noreferrer" class="text-link">transparency metrics</a> — debate counts, provider mix, usage distribution, recent topics (server instance stats).</p>
+        </article>
+        <article class="utility-card utility-planned">
+            <span class="utility-badge utility-badge-muted">Planned</span>
+            <h3>Phase 5 — Marketing &amp; partnerships</h3>
+            <p>Thread-ready narratives, shareable graphics, and <strong>outreach playbooks</strong> for creators and collaborators.</p>
+        </article>
     </div>
-    
-    <!-- Utility Evolution -->
-    <div style="margin-top: 4rem;">
-        <p class="section-label">Token Utility</p>
-        <h2 class="section-title" style="font-size: 2rem;">From meme to utility.<br>The $DISS evolution.</h2>
-        
-        <div class="evolution">
-            <div class="evo-card">
-                <p class="evo-phase">Phase 1 — Launch</p>
-                <h3>🪙 Meme Coin</h3>
-                <ul>
-                    <li>Community building</li>
-                    <li>Social engagement & memes</li>
-                    <li>Brand awareness</li>
-                    <li>CT presence & virality</li>
-                </ul>
-            </div>
-            <div class="evo-card">
-                <p class="evo-phase">Phase 2 — Platform</p>
-                <h3>🧠 Access Token</h3>
-                <ul>
-                    <li>Hold $DISS → Platform access</li>
-                    <li>Unlimited AI debates</li>
-                    <li>Priority processing</li>
-                    <li>Early feature access</li>
-                </ul>
-            </div>
-            <div class="evo-card">
-                <p class="evo-phase">Phase 3 — Premium</p>
-                <h3>🔥 Burn Utility</h3>
-                <ul>
-                    <li>Deep Research Mode (burn per query)</li>
-                    <li>Custom agent personalities</li>
-                    <li>Private debate sessions</li>
-                    <li>API access for developers</li>
-                </ul>
-            </div>
-            <div class="evo-card">
-                <p class="evo-phase">Phase 4 — Governance</p>
-                <h3>🏛️ Governance Token</h3>
-                <ul>
-                    <li>Vote on new agents</li>
-                    <li>Platform feature votes</li>
-                    <li>Revenue sharing</li>
-                    <li>Buyback & burn program</li>
-                </ul>
-            </div>
-        </div>
+    <div class="utility-actions">
+        <a href="https://app.dissensus.fun/metrics" class="btn-secondary" target="_blank" rel="noopener noreferrer">📊 Open metrics dashboard</a>
+        <a href="https://app.dissensus.fun" class="btn-primary" target="_blank" rel="noopener noreferrer">🚀 Launch debate engine</a>
     </div>
 </section>
+
+
 
 <!-- ============ ROADMAP ============ -->
 <section id="roadmap">
@@ -370,18 +339,18 @@
         <div class="roadmap-item">
             <div class="roadmap-dot active">🚀</div>
             <div class="roadmap-content">
-                <p class="quarter">Q3 2025 — Now</p>
-                <h3>Launch & Community</h3>
-                <p>$DISS token launch on pump.fun. Brand identity. X/Twitter community. Telegram. First 1,000 holders. Meme campaign. "Get $DISS'd" goes viral.</p>
+                <p class="quarter">Live — Community</p>
+                <h3>Launch &amp; brand energy</h3>
+                <p>Brand, X (<a href="https://x.com/DissensusDev" target="_blank" rel="noopener noreferrer" class="text-link">@DissensusDev</a>), community, CT narrative.</p>
             </div>
         </div>
         
         <div class="roadmap-item">
-            <div class="roadmap-dot">🧠</div>
+            <div class="roadmap-dot active">🧠</div>
             <div class="roadmap-content">
-                <p class="quarter">Q4 2025</p>
-                <h3>Platform Beta</h3>
-                <p>Dissensus AI debate platform goes live. Token-gated access for $DISS holders. Three default agents (CIPHER, NOVA, PRISM). Web research integration. First community debates.</p>
+                <p class="quarter">Live — Debate engine</p>
+                <h3>Platform &amp; transparency</h3>
+                <p><a href="https://app.dissensus.fun" target="_blank" rel="noopener noreferrer" class="text-link">app.dissensus.fun</a> — 4-phase debates (CIPHER, NOVA, PRISM), web research, share cards, wallet + balance, access tiers, <a href="https://app.dissensus.fun/metrics" target="_blank" rel="noopener noreferrer" class="text-link">metrics dashboard</a>.</p>
             </div>
         </div>
         
@@ -389,8 +358,8 @@
             <div class="roadmap-dot">🔥</div>
             <div class="roadmap-content">
                 <p class="quarter">Q1 2026</p>
-                <h3>Growth & Premium</h3>
-                <p>Custom agent personalities. Deep Research Mode with burn mechanic. API beta for developers. Mobile-optimized UI. Partnerships with crypto media and CT influencers.</p>
+                <h3>Growth &amp; premium</h3>
+                <p>Custom agent personalities. Deep Research Mode. API beta for developers. Mobile-optimized UI. Partnerships with media and influencers.</p>
             </div>
         </div>
         
@@ -398,21 +367,21 @@
             <div class="roadmap-dot">🏛️</div>
             <div class="roadmap-content">
                 <p class="quarter">Q2 2026</p>
-                <h3>Governance & Scale</h3>
-                <p>On-chain governance launch. Community votes on new agent personalities. Revenue sharing model. Buyback & burn program. Dissensus becomes the standard for AI-powered analysis.</p>
+                <h3>Governance &amp; scale</h3>
+                <p>Community governance launch. Community votes on new agent personalities. Revenue sharing model. Dissensus becomes the standard for AI-powered analysis.</p>
             </div>
         </div>
     </div>
 </section>
 
 <!-- ============ CTA ============ -->
-<section class="cta-section" id="buy">
+<section class="cta-section" id="try">
     <div class="cta-glow"></div>
-    <h2 class="cta-title">Ready to get<br><span style="background: linear-gradient(135deg, #8B5CF6, #00D4FF, #00FF88); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">$DISS'd?</span></h2>
+    <h2 class="cta-title">Ready to challenge<br><span style="background: linear-gradient(135deg, #8B5CF6, #00D4FF, #00FF88); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+your assumptions?</span></h2>
     <p class="cta-desc">Join the Dissensus. Three AI minds are waiting for your first question.</p>
     <div class="cta-buttons">
         <a href="https://app.dissensus.fun" class="btn-launch-hero" target="_blank">🚀 Launch Debate Engine</a>
-        <a href="https://pump.fun/coin/G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXFpump" class="btn-primary" target="_blank" rel="noopener noreferrer">🪙 Buy on pump.fun</a>
         <a href="https://x.com/DissensusDev" class="btn-secondary" target="_blank">🐦 Follow on X</a>
         <a href="#" class="btn-secondary" target="_blank">💬 Join Telegram</a>
     </div>
@@ -424,29 +393,18 @@
         <a href="#about">About</a>
         <a href="#agents">Agents</a>
         <a href="#how">How It Works</a>
-        <a href="#tokenomics">Tokenomics</a>
+        <a href="#platform">Platform</a>
         <a href="#roadmap">Roadmap</a>
         <a href="https://app.dissensus.fun" target="_blank">🚀 Launch App</a>
         <a href="https://x.com/DissensusDev" target="_blank">X / Twitter</a>
         <a href="#" target="_blank">Telegram</a>
-        <a href="https://pump.fun/coin/G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXFpump" target="_blank" rel="noopener noreferrer">pump.fun</a>
     </div>
     <p class="footer-copy">
-        ⚡ Dissensus — Where Disagreement Forges Truth | $DISS on Solana<br>
-        <span style="margin-top: 0.5rem; display: inline-block;">This is a meme coin. Do your own research. Not financial advice.</span>
+        ⚡ Dissensus — Where Disagreement Forges Truth
     </p>
 </footer>
 
 <script>
-// Ensure CA display is correct (guards against injected scripts overwriting)
-(function(){
-    const bar = document.getElementById('contractBar');
-    const ca = bar && bar.getAttribute('data-ca');
-    if (ca && bar) {
-        const span = bar.querySelector('.ca-val');
-        if (span) span.textContent = ca;
-    }
-})();
 // Mobile nav toggle
 function toggleMobileNav() {
     const links = document.getElementById('navLinks');
