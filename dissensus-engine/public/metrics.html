@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>$DISS — Transparency Dashboard</title>
+  <title>Dissensus — Transparency Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * {
@@ -115,50 +115,6 @@
       margin-bottom: 20px;
       color: #fff;
     }
-
-    .sim-summary {
-      color: rgba(255,255,255,0.55);
-      font-size: 0.9rem;
-      margin-bottom: 16px;
-      line-height: 1.5;
-    }
-
-    .tiers-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    .tiers-table th,
-    .tiers-table td {
-      padding: 15px;
-      text-align: left;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-    }
-
-    .tiers-table th {
-      color: rgba(255,255,255,0.5);
-      font-weight: 500;
-      text-transform: uppercase;
-      font-size: 0.8rem;
-    }
-
-    .tiers-table td {
-      color: #fff;
-    }
-
-    .tier-badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 600;
-    }
-
-    .tier-FREE { background: rgba(255,255,255,0.1); }
-    .tier-BRONZE { background: rgba(205, 127, 50, 0.2); color: #CD7F32; }
-    .tier-SILVER { background: rgba(192, 192, 192, 0.2); color: #C0C0C0; }
-    .tier-GOLD { background: rgba(255, 215, 0, 0.2); color: #FFD700; }
-    .tier-WHALE { background: rgba(139, 92, 246, 0.2); color: #8B5CF6; }
 
     .provider-bar {
       margin-bottom: 15px;
@@ -309,7 +265,7 @@
     </div>
 
     <div class="header">
-      <h1>$DISS Transparency Dashboard</h1>
+      <h1>Dissensus Transparency Dashboard</h1>
       <p>Real-time metrics for the Dissensus debate engine</p>
     </div>
 
@@ -343,24 +299,6 @@
     </div>
 
     <div class="section">
-      <h2>🔐 Staking tiers</h2>
-      <p class="sim-summary" id="stakingSimSummary"></p>
-      <table class="tiers-table">
-        <thead>
-          <tr>
-            <th>Tier</th>
-            <th>Min stake</th>
-            <th>Debates/day</th>
-            <th>Features</th>
-          </tr>
-        </thead>
-        <tbody id="tiersBody">
-          <tr><td colspan="4">Loading…</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="section">
       <h2>🧠 Provider distribution</h2>
       <div id="providerBars">Loading…</div>
     </div>
@@ -373,14 +311,12 @@
     </div>
 
     <div class="disclaimer">
-      ⚠️ This dashboard is for transparency only. Metrics are per server instance (in-memory; reset on restart). Simulated staking is not on-chain.
-      <br>Not financial advice. For educational &amp; entertainment purposes.
+      ⚠️ This dashboard is for transparency only. Metrics are per server instance (in-memory; reset on restart).
     </div>
 
     <div class="footer">
       <a href="https://dissensus.fun">dissensus.fun</a> •
-      <a href="/">Launch App</a> •
-      <a href="https://pump.fun/coin/G1Nb4BSnyQd7vxzicxmnj1DgxitH2BTP7QJ3FJXFpump" target="_blank" rel="noopener noreferrer">Buy $DISS</a>
+      <a href="/">Launch App</a>
     </div>
   </div>
 
@@ -391,48 +327,22 @@
       errEl.textContent = '';
 
       try {
-        const [metricsRes, topicsRes, tiersRes] = await Promise.all([
+        const [metricsRes, topicsRes] = await Promise.all([
           fetch('/api/metrics?recent=0'),
-          fetch('/api/metrics/topics?limit=10'),
-          fetch('/api/staking/tiers')
+          fetch('/api/metrics/topics?limit=10')
         ]);
 
         if (!metricsRes.ok) throw new Error('Metrics API: ' + metricsRes.status);
         if (!topicsRes.ok) throw new Error('Topics API: ' + topicsRes.status);
-        if (!tiersRes.ok) throw new Error('Tiers API: ' + tiersRes.status);
 
         const metrics = await metricsRes.json();
         const topics = await topicsRes.json();
-        const tiersPayload = await tiersRes.json();
-
-        const tierList = Array.isArray(tiersPayload.tiers) ? tiersPayload.tiers : [];
 
         document.getElementById('totalDebates').textContent = (metrics.totalDebates ?? 0).toLocaleString();
         document.getElementById('debatesToday').textContent = (metrics.debatesToday ?? 0).toLocaleString();
         document.getElementById('uniqueTopics').textContent = (metrics.uniqueTopics ?? 0).toLocaleString();
         document.getElementById('uptime').textContent = (metrics.uptimePercent ?? '100.00') + '%';
         document.getElementById('lastUpdate').textContent = '• Updated ' + new Date().toLocaleTimeString();
-
-        const st = metrics.staking || {};
-        const dist = st.tierDistribution || {};
-        document.getElementById('stakingSimSummary').textContent =
-          'Simulated this instance: ' + (st.activeStakers ?? 0).toLocaleString() + ' active stakers · ' +
-          (st.totalStaked ?? 0).toLocaleString() + ' $DISS (sim) · Wallets/tier: FREE ' + (dist.FREE ?? 0) +
-          ', BRONZE ' + (dist.BRONZE ?? 0) + ', SILVER ' + (dist.SILVER ?? 0) + ', GOLD ' + (dist.GOLD ?? 0) + ', WHALE ' + (dist.WHALE ?? 0);
-
-        const tiersBody = document.getElementById('tiersBody');
-        tiersBody.innerHTML = tierList.map(function (tier) {
-          var name = tier.name || '';
-          var feats = Array.isArray(tier.features) ? tier.features.join(', ') : '';
-          return (
-            '<tr>' +
-            '<td><span class="tier-badge tier-' + name + '">' + escapeHtml(name) + '</span></td>' +
-            '<td>' + Number(tier.minStake || 0).toLocaleString() + ' $DISS</td>' +
-            '<td>' + escapeHtml(String(tier.debatesPerDay)) + '</td>' +
-            '<td>' + escapeHtml(feats) + '</td>' +
-            '</tr>'
-          );
-        }).join('') || '<tr><td colspan="4">No tier data</td></tr>';
 
         var usage = metrics.providerUsage || {};
         var total = Object.values(usage).reduce(function (a, b) { return a + b; }, 0) || 1;
