@@ -260,7 +260,6 @@ app.get('/api/debate/stream', debateLimiter, async (req, res) => {
 
   const effectiveKey = getEffectiveApiKey(providerName, apiKey?.trim());
   if (!effectiveKey) {
-    const serverHas = SERVER_KEYS[providerName] ? 'Server has a key configured' : 'Server has no key';
     res.status(400).json({
       error: `API key required. Please enter your ${providerName} API key, or set ${providerName.toUpperCase()}_API_KEY in server .env`
     });

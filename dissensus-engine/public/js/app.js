@@ -100,17 +100,27 @@ function updateModels() {
   localStorage.setItem('dissensus_provider', provider);
 }
 
-// --- Simple Markdown Renderer ---
+// --- Simple Markdown Renderer (with HTML escaping for XSS prevention) ---
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function renderMarkdown(text) {
   if (!text) return '';
-  let html = text
+  // Escape HTML first to prevent XSS from LLM output
+  let html = escapeHtml(text)
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/^- (.+)$/gm, '<li>$1</li>')
     .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
-    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
     .replace(/\n\n/g, '</p><p>')
     .replace(/\n/g, '<br>');
 
@@ -290,8 +300,12 @@ async function startDebate() {
 
   const rawText = { cipher: {}, nova: {}, prism: {} };
 
+  // Abort controller — auto-cancel if debate takes > 5 minutes
+  const controller = new AbortController();
+  const debateTimeout = setTimeout(() => controller.abort(), 5 * 60 * 1000);
+
   try {
-    const res = await fetch(streamUrl);
+    const res = await fetch(streamUrl, { signal: controller.signal });
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({}));
       throw new Error(errBody.error || `Server error (${res.status})`);
@@ -324,7 +338,12 @@ async function startDebate() {
     }
     debateComplete();
   } catch (e) {
-    debateError(e.message || 'Connection failed. Check your API key, or wait a minute if you hit the rate limit (10 debates/min).');
+    const msg = e.name === 'AbortError'
+      ? 'Debate timed out (5 min limit). Please try a shorter topic or different provider.'
+      : (e.message || 'Connection failed. Check your API key, or wait a minute if you hit the rate limit (10 debates/min).');
+    debateError(msg);
+  } finally {
+    clearTimeout(debateTimeout);
   }
   } catch (err) {
     console.error('startDebate error:', err);
