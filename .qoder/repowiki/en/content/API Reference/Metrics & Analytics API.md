@@ -9,6 +9,13 @@
 - [package.json](file://dissensus-engine/package.json)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Updated API documentation to reflect streamlined metrics tracking by removing staking aggregation functionality
+- Removed references to deprecated metrics: totalStaked, activeStakers, tierDistribution
+- Updated response schemas to match current metrics implementation
+- Clarified that metrics now focus solely on debate analytics and provider usage
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -22,7 +29,7 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document provides comprehensive API documentation for the metrics and analytics system powering the Dissensus debate engine. It covers:
+This document provides comprehensive API documentation for the metrics and analytics system powering the Dissensus debate engine. The system has been streamlined to focus on core debate analytics and provider usage tracking. It covers:
 - Public analytics endpoints for accessing debate statistics, provider utilization, and usage trends
 - The recent topics endpoint for topic-based analytics and trending data
 - Request parameters, response schemas, and data filtering options
@@ -30,6 +37,8 @@ This document provides comprehensive API documentation for the metrics and analy
 - Client integration patterns, data visualization approaches, and performance optimization techniques
 - Rate limiting, caching strategies, and data privacy considerations
 - Guidance for building custom analytics interfaces and monitoring system health
+
+**Updated** The metrics system has been simplified to remove staking aggregation functionality and related metrics (totalStaked, activeStakers, tierDistribution).
 
 ## Project Structure
 The metrics and analytics system is implemented as part of the Express server and a lightweight in-memory metrics store. The public dashboard consumes these endpoints to render live analytics.
@@ -65,6 +74,8 @@ Key responsibilities:
 - Track total debates, unique topics, debates per day, provider usage, recent topics, and hourly activity.
 - Expose a combined endpoint with optional recent topics and a separate endpoint for recent topics only.
 - Provide uptime percentage and timestamps for last update and server start time.
+
+**Updated** The metrics system has been streamlined to focus on debate analytics rather than staking metrics.
 
 **Section sources**
 - [metrics.js:8-30](file://dissensus-engine/server/metrics.js#L8-L30)
@@ -131,6 +142,8 @@ Behavior:
 Integration:
 - The dashboard calls this endpoint with recent=0 and also calls the topics endpoint to split requests.
 
+**Updated** Response schema no longer includes staking-related metrics. The response now focuses exclusively on debate analytics.
+
 **Section sources**
 - [index.js:304-310](file://dissensus-engine/server/index.js#L304-L310)
 - [metrics.js:77-100](file://dissensus-engine/server/metrics.js#L77-L100)
@@ -177,7 +190,7 @@ The public dashboard:
   - Total debates, debates today, unique topics, uptime percentage
   - Provider usage bars with percentages
   - Recent topics list with timestamps
-- Auto-refreshes every 30 seconds and displays a “Live” indicator.
+- Auto-refreshes every 30 seconds and displays a "Live" indicator.
 
 **Section sources**
 - [metrics.html:324-396](file://dissensus-engine/public/metrics.html#L324-L396)
@@ -232,7 +245,7 @@ Recommendations:
 ## Troubleshooting Guide
 Common issues and resolutions:
 - CORS/Same-origin errors: The dashboard expects to be opened from the same origin as the app. If you see an error banner, open the dashboard from the Dissensus app or ensure same-origin policy is satisfied.
-- Rate limiting: If you receive a “Too many metrics requests” error, reduce client polling frequency or cache responses locally.
+- Rate limiting: If you receive a "Too many metrics requests" error, reduce client polling frequency or cache responses locally.
 - Missing recent topics: Ensure the recent parameter is greater than 0 for the combined endpoint, or call the topics endpoint separately.
 - Provider usage skew: Provider names are normalized to lowercase. Verify client-side rendering handles unknown providers gracefully.
 - Data resets: Uptime and daily counters reset at midnight. If you expect continuous growth, account for daily resets in your dashboards.
@@ -246,7 +259,7 @@ Health checks:
 - [metrics.js:66-73](file://dissensus-engine/server/metrics.js#L66-L73)
 
 ## Conclusion
-The metrics and analytics system provides a lightweight, transparent view of the debate engine’s usage. It offers essential KPIs and recent topics for real-time dashboards, with built-in rate limiting and a simple in-memory store. For production deployments, consider persistence, caching, and enhanced monitoring to support higher loads and long-term trend analysis.
+The metrics and analytics system provides a lightweight, transparent view of the debate engine's usage. It offers essential KPIs and recent topics for real-time dashboards, with built-in rate limiting and a simple in-memory store. The system has been streamlined to focus on core debate analytics rather than staking metrics. For production deployments, consider persistence, caching, and enhanced monitoring to support higher loads and long-term trend analysis.
 
 ## Appendices
 
@@ -267,6 +280,8 @@ The metrics and analytics system provides a lightweight, transparent view of the
 
 - GET /metrics
   - Serves the transparency dashboard HTML.
+
+**Updated** Response schemas no longer include staking-related metrics. The API now focuses exclusively on debate analytics.
 
 **Section sources**
 - [index.js:304-316](file://dissensus-engine/server/index.js#L304-L316)

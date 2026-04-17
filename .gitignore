@@ -54,3 +54,6 @@ htmlcov/
 # --- Misc ---
 *.bak
 *.tmp
+
+# --- Debate Data ---
+data/debates/

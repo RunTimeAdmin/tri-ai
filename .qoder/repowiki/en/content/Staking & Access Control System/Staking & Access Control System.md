@@ -2,15 +2,21 @@
 
 <cite>
 **Referenced Files in This Document**
-- [staking.js](file://dissensus-engine/server/staking.js)
-- [solana-balance.js](file://dissensus-engine/server/solana-balance.js)
 - [index.js](file://dissensus-engine/server/index.js)
-- [wallet-connect.js](file://dissensus-engine/public/js/wallet-connect.js)
 - [app.js](file://dissensus-engine/public/js/app.js)
 - [index.html](file://dissensus-engine/public/index.html)
 - [metrics.js](file://dissensus-engine/server/metrics.js)
 - [README.md](file://dissensus-engine/README.md)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Removed all staking system documentation including tier management, daily debate limits, and token economy features
+- Updated architecture overview to reflect the removal of wallet verification and staking endpoints
+- Removed all references to staking.js, solana-balance.js, and wallet-connect.js
+- Updated configuration section to remove staking-related environment variables
+- Revised security considerations to focus on API key management only
+- Updated troubleshooting guide to remove staking-related issues
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -25,380 +31,252 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document explains the staking and access control system powering the Dissensus AI Debate Engine. It covers the tier-based access model (FREE, BRONZE, SILVER, GOLD, WHALE), daily debate limits per tier, and the wallet verification process. It documents the Solana blockchain integration for balance verification, stake management, and token-based access control. It also provides configuration guidance, wallet connection workflows, security considerations, examples of tier upgrades and access restrictions, premium feature activation, simulation modes for development, production deployment considerations, troubleshooting, and the relationship between staking tiers and AI provider selection.
+This document explains the current state of the Dissensus AI Debate Engine. **Important**: The staking system and token economy features have been completely removed from the codebase. The system now operates as a straightforward AI debate platform where users can engage with AI providers directly using their own API keys or server-side keys when configured.
+
+The platform supports three AI providers (DeepSeek, Google Gemini, and OpenAI) with configurable pricing and quality levels. Users can select their preferred provider, enter their API key, choose a model, and start debating topics in real-time through a four-phase debate process.
 
 ## Project Structure
-The staking and access control system spans both backend and frontend modules:
-- Backend server exposes endpoints for staking, Solana balance verification, debate validation, and streaming debates.
-- Frontend integrates wallet connection via Phantom/Solflare and displays staking status and tier benefits.
-- Metrics module aggregates staking data for transparency dashboards.
+The system consists of a streamlined backend server and frontend interface:
+- Backend server exposes debate endpoints, provider configuration, and metrics collection.
+- Frontend provides a complete user interface for selecting providers, entering API keys, and managing debates.
+- Metrics module tracks usage statistics for transparency.
 
 ```mermaid
 graph TB
 subgraph "Frontend"
 UI["index.html"]
-WalletJS["wallet-connect.js"]
 AppJS["app.js"]
 end
 subgraph "Backend"
 Server["index.js"]
-Staking["staking.js"]
-Solana["solana-balance.js"]
 Metrics["metrics.js"]
 end
 UI --> AppJS
-AppJS --> WalletJS
 AppJS --> Server
-WalletJS --> Server
-Server --> Staking
-Server --> Solana
 Server --> Metrics
 ```
 
 **Diagram sources**
-- [index.js:1-481](file://dissensus-engine/server/index.js#L1-L481)
-- [staking.js:1-183](file://dissensus-engine/server/staking.js#L1-L183)
-- [solana-balance.js:1-83](file://dissensus-engine/server/solana-balance.js#L1-L83)
-- [wallet-connect.js:1-176](file://dissensus-engine/public/js/wallet-connect.js#L1-L176)
-- [app.js:1-674](file://dissensus-engine/public/js/app.js#L1-L674)
-- [index.html:1-217](file://dissensus-engine/public/index.html#L1-L217)
-- [metrics.js:1-152](file://dissensus-engine/server/metrics.js#L1-L152)
+- [index.js:1-356](file://dissensus-engine/server/index.js#L1-L356)
+- [app.js:1-554](file://dissensus-engine/public/js/app.js#L1-L554)
+- [index.html:1-186](file://dissensus-engine/public/index.html#L1-L186)
+- [metrics.js:1-112](file://dissensus-engine/server/metrics.js#L1-L112)
 
 **Section sources**
-- [index.js:1-481](file://dissensus-engine/server/index.js#L1-L481)
-- [README.md:103-108](file://dissensus-engine/README.md#L103-L108)
+- [index.js:1-356](file://dissensus-engine/server/index.js#L1-L356)
+- [README.md:90-112](file://dissensus-engine/README.md#L90-L112)
 
 ## Core Components
-- Tier thresholds and daily debate limits define access levels and feature sets.
-- Staking module simulates stake/unstake and enforces daily debate quotas.
-- Solana integration verifies wallet balances server-side using SPL token accounts.
-- Frontend wallet connector integrates Phantom/Solflare and synchronizes staking inputs.
-- Metrics module aggregates staking statistics for dashboards.
+- Provider configuration system with server-side key support.
+- Real-time debate orchestration with four-phase process.
+- SSE streaming for real-time debate display.
+- Metrics collection and public dashboard.
+- API key management with local storage persistence.
 
 **Section sources**
-- [staking.js:12-19](file://dissensus-engine/server/staking.js#L12-L19)
-- [index.js:29-30](file://dissensus-engine/server/index.js#L29-L30)
-- [solana-balance.js:14-20](file://dissensus-engine/server/solana-balance.js#L14-L20)
-- [wallet-connect.js:17-23](file://dissensus-engine/public/js/wallet-connect.js#L17-L23)
-- [metrics.js:8-9](file://dissensus-engine/server/metrics.js#L8-L9)
+- [index.js:58-99](file://dissensus-engine/server/index.js#L58-L99)
+- [index.js:124-230](file://dissensus-engine/server/index.js#L124-L230)
+- [app.js:22-53](file://dissensus-engine/public/js/app.js#L22-L53)
+- [metrics.js:8-30](file://dissensus-engine/server/metrics.js#L8-L30)
 
 ## Architecture Overview
-The system enforces wallet-required debates and daily limits when configured. The frontend connects a wallet, displays balance, and triggers staking actions. The backend validates debate requests against staking tiers and records usage.
+The system operates as a simple API-driven debate platform. Users connect via the web interface, select their provider and model, and receive real-time debate output through SSE streaming. All processing is handled server-side with provider APIs.
 
 ```mermaid
 sequenceDiagram
 participant Client as "Browser"
-participant Wallet as "Phantom/Solflare"
-participant FE as "wallet-connect.js"
+participant FE as "app.js"
 participant BE as "index.js"
-participant Stake as "staking.js"
-participant Sol as "solana-balance.js"
-participant Met as "metrics.js"
-Client->>FE : Connect wallet
-FE->>Wallet : provider.connect()
-Wallet-->>FE : publicKey
-FE->>BE : GET /api/solana/token-balance?wallet=pubkey
-BE->>Sol : fetchDissBalance(pubkey)
-Sol-->>BE : {uiAmount, mint, ata}
-BE-->>FE : Balance response
-FE->>BE : POST /api/staking/stake {wallet, amount}
-BE->>Stake : simulateStake(wallet, amount)
-Stake-->>BE : Updated staking info
-BE->>Met : syncStakingFromModule()
-BE-->>FE : {ok, tier, debatesRemaining}
-Client->>BE : POST /api/debate/validate {topic, provider, model, wallet}
-BE->>Stake : canDebate(wallet)
-Stake-->>BE : allowed/remaining
-BE-->>Client : {ok} or {error}
+participant Provider as "AI Provider"
+Client->>FE : User selects provider/model
+FE->>BE : POST /api/debate/validate
+BE->>BE : Validate topic/model/API key
+BE-->>FE : {ok} or error
+FE->>BE : GET /api/debate/stream?topic&provider&model&apiKey
+BE->>Provider : Call provider API
+Provider-->>BE : Stream debate chunks
+BE-->>FE : SSE stream with debate events
+FE->>FE : Render debate in real-time
+FE->>BE : POST /api/card (optional)
+BE-->>FE : PNG card download
 ```
 
 **Diagram sources**
-- [wallet-connect.js:95-116](file://dissensus-engine/public/js/wallet-connect.js#L95-L116)
-- [index.js:98-111](file://dissensus-engine/server/index.js#L98-L111)
-- [solana-balance.js:26-76](file://dissensus-engine/server/solana-balance.js#L26-L76)
-- [index.js:336-355](file://dissensus-engine/server/index.js#L336-L355)
-- [staking.js:81-96](file://dissensus-engine/server/staking.js#L81-L96)
-- [metrics.js:91-98](file://dissensus-engine/server/metrics.js#L91-L98)
+- [app.js:208-341](file://dissensus-engine/public/js/app.js#L208-L341)
+- [index.js:124-230](file://dissensus-engine/server/index.js#L124-L230)
+- [index.js:257-291](file://dissensus-engine/server/index.js#L257-L291)
 
 ## Detailed Component Analysis
 
-### Tier-Based Access Model
-- Tiers: FREE, BRONZE, SILVER, GOLD, WHALE.
-- Thresholds and daily debate limits:
-  - FREE: 1 debate/day.
-  - BRONZE: 5 debates/day.
-  - SILVER: 20 debates/day.
-  - GOLD: unlimited debates.
-  - WHALE: unlimited debates.
-- Features per tier include basic debates, history, custom topics, premium models, and API access.
+### Provider Configuration and API Key Management
+The system supports three AI providers with flexible key management:
+- DeepSeek: Most cost-effective option (~$0.008/debate)
+- Google Gemini: Multiple models including free tier options
+- OpenAI: Premium quality models (GPT-4o, GPT-4o Mini)
+
+API keys can be entered by users or managed server-side for production deployments. The system automatically detects which providers have server keys configured.
 
 ```mermaid
 flowchart TD
-Start(["Staking Info Request"]) --> Normalize["Normalize Wallet"]
-Normalize --> Exists{"Wallet exists?"}
-Exists --> |No| Free["Return FREE tier defaults"]
-Exists --> |Yes| Load["Load staking data"]
-Load --> Reset["Ensure daily reset"]
-Reset --> Tier["Compute tier from staked amount"]
-Tier --> Limit["Resolve daily limit (-1 for unlimited)"]
-Limit --> Remaining["Compute remaining debates"]
-Remaining --> Return["Return tier, limits, and usage"]
+Start(["Provider Selection"]) --> CheckKeys["Check server-side keys"]
+CheckKeys --> HasServer{"Server key available?"}
+HasServer --> |Yes| UseServer["Use server key automatically"]
+HasServer --> |No| UserKey["Require user API key"]
+UserKey --> Validate["Validate API key format"]
+UseServer --> Validate
+Validate --> Success["Proceed to debate"]
 ```
 
 **Diagram sources**
-- [staking.js:43-79](file://dissensus-engine/server/staking.js#L43-L79)
+- [index.js:104-110](file://dissensus-engine/server/index.js#L104-L110)
+- [app.js:59-100](file://dissensus-engine/public/js/app.js#L59-L100)
 
 **Section sources**
-- [staking.js:12-19](file://dissensus-engine/server/staking.js#L12-L19)
-- [staking.js:35-41](file://dissensus-engine/server/staking.js#L35-L41)
-- [staking.js:65-78](file://dissensus-engine/server/staking.js#L65-L78)
-
-### Daily Debate Limits and Usage Tracking
-- Daily reset occurs at UTC midnight; debatesUsedToday resets per day.
-- canDebate returns allowed status and remaining count; unlimited tiers return “unlimited”.
-- recordDebateUsage increments usage after a successful debate.
-
-```mermaid
-flowchart TD
-Entry(["Debate Attempt"]) --> CheckWallet["Check wallet present"]
-CheckWallet --> Enforced{"STAKING_ENFORCE?"}
-Enforced --> |Yes & missing| Deny["Reject: wallet required"]
-Enforced --> |No| Validate["Validate topic/model/API key"]
-Enforced --> |Yes & present| Gate["canDebate(wallet)"]
-Gate --> Allowed{"Allowed?"}
-Allowed --> |No| Deny
-Allowed --> |Yes| Validate
-Validate --> Proceed["Proceed to debate"]
-Proceed --> Record["recordDebateUsage(wallet)"]
-```
-
-**Diagram sources**
-- [index.js:177-215](file://dissensus-engine/server/index.js#L177-L215)
-- [index.js:220-311](file://dissensus-engine/server/index.js#L220-L311)
-- [staking.js:110-125](file://dissensus-engine/server/staking.js#L110-L125)
-- [staking.js:127-136](file://dissensus-engine/server/staking.js#L127-L136)
-
-**Section sources**
-- [index.js:177-215](file://dissensus-engine/server/index.js#L177-L215)
-- [index.js:220-311](file://dissensus-engine/server/index.js#L220-L311)
-- [staking.js:25-33](file://dissensus-engine/server/staking.js#L25-L33)
-- [staking.js:110-125](file://dissensus-engine/server/staking.js#L110-L125)
-- [staking.js:127-136](file://dissensus-engine/server/staking.js#L127-L136)
-
-### Wallet Verification and Balance Retrieval
-- Frontend wallet connector detects Phantom or Solflare, connects, and fetches balance via server endpoint.
-- Server-side balance retrieval uses SPL token program to fetch associated token account balance for the configured mint.
-
-```mermaid
-sequenceDiagram
-participant FE as "wallet-connect.js"
-participant BE as "index.js"
-participant Sol as "solana-balance.js"
-FE->>BE : GET /api/solana/token-balance?wallet=pubkey
-BE->>Sol : fetchDissBalance(pubkey)
-Sol->>Sol : normalizeWallet(pubkey)
-Sol->>Sol : getMint + getAssociatedTokenAddress
-Sol->>Sol : getAccount(ATA)
-Sol-->>BE : {uiAmount, raw, decimals, mint, ata}
-BE-->>FE : JSON response
-```
-
-**Diagram sources**
-- [wallet-connect.js:63-80](file://dissensus-engine/public/js/wallet-connect.js#L63-L80)
-- [index.js:98-111](file://dissensus-engine/server/index.js#L98-L111)
-- [solana-balance.js:26-76](file://dissensus-engine/server/solana-balance.js#L26-L76)
-
-**Section sources**
-- [wallet-connect.js:17-23](file://dissensus-engine/public/js/wallet-connect.js#L17-L23)
-- [wallet-connect.js:63-80](file://dissensus-engine/public/js/wallet-connect.js#L63-L80)
-- [solana-balance.js:14-20](file://dissensus-engine/server/solana-balance.js#L14-L20)
-- [solana-balance.js:26-76](file://dissensus-engine/server/solana-balance.js#L26-L76)
-
-### Staking Endpoints and Simulation Mode
-- Endpoints:
-  - GET /api/staking/tiers — lists tiers and enforcement flag.
-  - GET /api/staking/status — returns tier, staked amount, and daily usage.
-  - POST /api/staking/stake — sets simulated stake.
-  - POST /api/staking/unstake — clears simulated stake.
-- Simulation mode stores in-memory data keyed by wallet address; daily counters reset automatically.
-
-```mermaid
-sequenceDiagram
-participant FE as "app.js"
-participant BE as "index.js"
-participant Stake as "staking.js"
-participant Met as "metrics.js"
-FE->>BE : GET /api/staking/tiers
-BE-->>FE : {tiers, simulated, enforce}
-FE->>BE : GET /api/staking/status?wallet=pubkey
-BE->>Stake : getStakingInfo(pubkey)
-Stake-->>BE : {tier, debatesRemaining, ...}
-BE-->>FE : JSON
-FE->>BE : POST /api/staking/stake {wallet, amount}
-BE->>Stake : simulateStake(wallet, amount)
-Stake-->>BE : info
-BE->>Met : syncStakingFromModule()
-BE-->>FE : {ok, ...}
-FE->>BE : POST /api/staking/unstake {wallet}
-BE->>Stake : simulateUnstake(wallet)
-Stake-->>BE : info
-BE->>Met : syncStakingFromModule()
-BE-->>FE : {ok, ...}
-```
-
-**Diagram sources**
-- [index.js:324-355](file://dissensus-engine/server/index.js#L324-L355)
-- [staking.js:43-79](file://dissensus-engine/server/staking.js#L43-L79)
-- [staking.js:81-108](file://dissensus-engine/server/staking.js#L81-L108)
-- [metrics.js:91-98](file://dissensus-engine/server/metrics.js#L91-L98)
-
-**Section sources**
-- [index.js:324-355](file://dissensus-engine/server/index.js#L324-L355)
-- [staking.js:81-108](file://dissensus-engine/server/staking.js#L81-L108)
-- [metrics.js:91-98](file://dissensus-engine/server/metrics.js#L91-L98)
-
-### Relationship Between Staking Tiers and AI Provider Selection
-- Providers and models are configured server-side; users select provider and model in the UI.
-- When server-side keys are configured, users can optionally override with their own keys.
-- Tier features include premium models and API access; higher tiers unlock additional capabilities.
-
-```mermaid
-classDiagram
-class Providers {
-+baseUrl
-+models
-+authHeader(key)
-}
-class AppJS {
-+updateModels()
-+getEffectiveApiKey()
-+validateModel()
-}
-class IndexJS {
-+GET /api/providers
-+POST /api/debate/validate
-+GET /api/debate/stream
-}
-AppJS --> Providers : "reads"
-AppJS --> IndexJS : "validates"
-IndexJS --> Providers : "uses"
-```
-
-**Diagram sources**
-- [debate-engine.js:14-39](file://dissensus-engine/server/debate-engine.js#L14-L39)
-- [app.js:60-101](file://dissensus-engine/public/js/app.js#L60-L101)
-- [index.js:138-172](file://dissensus-engine/server/index.js#L138-L172)
-
-**Section sources**
-- [index.js:138-172](file://dissensus-engine/server/index.js#L138-L172)
-- [app.js:60-101](file://dissensus-engine/public/js/app.js#L60-L101)
+- [index.js:58-99](file://dissensus-engine/server/index.js#L58-L99)
+- [index.js:104-110](file://dissensus-engine/server/index.js#L104-L110)
+- [app.js:22-53](file://dissensus-engine/public/js/app.js#L22-L53)
 - [README.md:22-33](file://dissensus-engine/README.md#L22-L33)
 
+### Real-Time Debate Streaming
+The system implements a sophisticated four-phase debate process with real-time streaming:
+1. Phase 1 - Independent Analysis
+2. Phase 2 - Opening Arguments  
+3. Phase 3 - Cross-Examination
+4. Phase 4 - Final Verdict
+
+Debates are streamed via Server-Sent Events (SSE) with automatic client-side rendering and smooth scrolling.
+
+```mermaid
+sequenceDiagram
+participant Client as "Browser"
+participant FE as "app.js"
+participant BE as "index.js"
+Client->>FE : Start debate
+FE->>BE : GET /api/debate/stream
+BE->>BE : Initialize DebateEngine
+loop Stream Processing
+BE->>FE : data : {type : 'phase-start', phase : 1}
+BE->>FE : data : {type : 'agent-chunk', agent, phase, chunk}
+BE->>FE : data : {type : 'agent-done', agent, phase}
+end
+BE->>FE : data : [DONE]
+FE->>FE : Render final verdict
+```
+
+**Diagram sources**
+- [app.js:344-412](file://dissensus-engine/public/js/app.js#L344-L412)
+- [index.js:156-230](file://dissensus-engine/server/index.js#L156-L230)
+
+**Section sources**
+- [index.js:156-230](file://dissensus-engine/server/index.js#L156-L230)
+- [app.js:344-412](file://dissensus-engine/public/js/app.js#L344-L412)
+
+### Metrics Collection and Transparency
+The system maintains comprehensive usage metrics with automatic daily reset:
+- Total debates and unique topics
+- Provider usage distribution
+- Hourly debate patterns
+- Success rates and error tracking
+- Recent topics for dashboard display
+
+Metrics are accessible via REST endpoints and a public dashboard page.
+
+```mermaid
+flowchart TD
+Debate["Debate Complete"] --> Record["recordDebate()"]
+Record --> UpdateTotals["Update totals & counts"]
+UpdateTotals --> ResetCheck{"Daily reset needed?"}
+ResetCheck --> |Yes| Reset["Reset daily counters"]
+ResetCheck --> |No| Continue["Continue"]
+Continue --> Metrics["Update provider usage"]
+Metrics --> Recent["Add to recent topics"]
+Recent --> Public["Expose via /api/metrics"]
+```
+
+**Diagram sources**
+- [metrics.js:32-73](file://dissensus-engine/server/metrics.js#L32-L73)
+- [index.js:304-320](file://dissensus-engine/server/index.js#L304-L320)
+
+**Section sources**
+- [metrics.js:32-104](file://dissensus-engine/server/metrics.js#L32-L104)
+- [index.js:296-320](file://dissensus-engine/server/index.js#L296-L320)
+
 ## Dependency Analysis
-- index.js depends on staking.js for tier computation and debate gating, solana-balance.js for balance verification, and metrics.js for staking aggregation.
-- Frontend app.js depends on wallet-connect.js for wallet operations and communicates with index.js endpoints.
-- metrics.js depends on staking.js for aggregate metrics.
+The current implementation has minimal dependencies focused on core functionality:
+- index.js depends on debate-engine for AI provider orchestration and metrics.js for usage tracking.
+- Frontend app.js depends on index.js endpoints for debate orchestration and card generation.
+- metrics.js is self-contained for usage analytics.
 
 ```mermaid
 graph LR
-AppJS["app.js"] --> WalletJS["wallet-connect.js"]
-AppJS --> IndexJS["index.js"]
-WalletJS --> IndexJS
-IndexJS --> Staking["staking.js"]
-IndexJS --> Solana["solana-balance.js"]
+AppJS["app.js"] --> IndexJS["index.js"]
 IndexJS --> Metrics["metrics.js"]
-Metrics --> Staking
 ```
 
 **Diagram sources**
-- [index.js:14-24](file://dissensus-engine/server/index.js#L14-L24)
-- [metrics.js:8-8](file://dissensus-engine/server/metrics.js#L8-L8)
+- [index.js:11-14](file://dissensus-engine/server/index.js#L11-L14)
 - [app.js:1-14](file://dissensus-engine/public/js/app.js#L1-L14)
-- [wallet-connect.js:1-11](file://dissensus-engine/public/js/wallet-connect.js#L1-L11)
 
 **Section sources**
-- [index.js:14-24](file://dissensus-engine/server/index.js#L14-L24)
-- [metrics.js:8-8](file://dissensus-engine/server/metrics.js#L8-L8)
+- [index.js:11-14](file://dissensus-engine/server/index.js#L11-L14)
 
 ## Performance Considerations
-- Rate limiting is applied to staking, balance, and debate endpoints to prevent abuse.
-- SSE streaming for debates is efficient but should be monitored for client disconnections.
-- In-memory staking data is suitable for demos; for production, consider persistence and sharding.
-- Solana RPC calls are read-only and cached minimally; ensure reliable RPC endpoints for production.
-
-[No sources needed since this section provides general guidance]
+- Rate limiting is applied to prevent abuse across all endpoints.
+- SSE streaming is efficient for real-time debate display.
+- In-memory metrics are suitable for demonstration but should be persisted in production.
+- API key validation prevents unnecessary provider calls.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
-- Invalid wallet address:
-  - Ensure the wallet is a valid Solana public key; the system normalizes input and rejects invalid keys.
-- Balance retrieval errors:
-  - Verify SOLANA_RPC_URL and DISS_TOKEN_MINT environment variables; ensure the mint is correct and the ATA exists.
-- Staking endpoints failing:
-  - Confirm STAKING_ENFORCE setting and that the wallet parameter is present when enforced.
-- Daily debate limit reached:
-  - Stake more tokens to upgrade tiers; verify tier status via staking status endpoint.
-- Metrics not updating:
-  - Ensure debates are recorded and syncStakingFromModule is invoked after debates.
+- Missing API key:
+  - Ensure you've entered a valid API key for your selected provider.
+  - Check that the provider has server-side keys configured if using the hosted version.
+- Invalid provider/model:
+  - Verify the selected model exists for your chosen provider.
+  - Check provider configuration in the server.
+- Network connectivity:
+  - Ensure stable internet connection for SSE streaming.
+  - Check rate limit status if receiving "Too many debates" errors.
+- Browser compatibility:
+  - SSE streaming requires modern browser support.
+  - Check console for JavaScript errors in developer tools.
 
 **Section sources**
-- [solana-balance.js:27-44](file://dissensus-engine/server/solana-balance.js#L27-L44)
-- [index.js:98-111](file://dissensus-engine/server/index.js#L98-L111)
-- [index.js:336-355](file://dissensus-engine/server/index.js#L336-L355)
-- [staking.js:110-125](file://dissensus-engine/server/staking.js#L110-L125)
-- [metrics.js:91-98](file://dissensus-engine/server/metrics.js#L91-L98)
+- [index.js:124-151](file://dissensus-engine/server/index.js#L124-L151)
+- [app.js:264-279](file://dissensus-engine/public/js/app.js#L264-L279)
 
 ## Conclusion
-The staking and access control system provides a robust, extensible framework for token-based access control. The current implementation is designed as a simulated demo, enabling tier-based debate limits and premium feature activation. On-chain staking will be integrated in future releases via a dedicated staking program ID. The Solana integration ensures secure, read-only balance verification, while the frontend offers seamless wallet connectivity. Production deployments should configure environment variables, enforce rate limits, and consider persistence for staking and metrics.
-
-[No sources needed since this section summarizes without analyzing specific files]
+The Dissensus AI Debate Engine now operates as a streamlined, API-first platform focused on delivering high-quality AI debates without the complexity of a staking system. The current implementation emphasizes simplicity, performance, and flexibility while maintaining robust provider integration and comprehensive metrics collection.
 
 ## Appendices
 
 ### Configuration and Environment Variables
-- STAKING_ENFORCE: Enables wallet requirement and daily debate limits.
-- SOLANA_RPC_URL: RPC endpoint for balance checks.
-- DISS_TOKEN_MINT: SPL mint address for $DISS.
-- SOLANA_CLUSTER: Cluster shown in configuration.
-- DISS_STAKING_PROGRAM_ID: Future on-chain staking program identifier.
-- TRUST_PROXY and TRUST_PROXY_HOPS: Reverse proxy trust configuration.
+- PORT: Server port (default: 3000)
+- TRUST_PROXY: Reverse proxy configuration (default: enabled)
+- TRUST_PROXY_HOPS: Number of trusted proxy hops
+- Provider API keys: DEEPSEEK_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY/GEMINI_API_KEY
 
 **Section sources**
-- [index.js:29-30](file://dissensus-engine/server/index.js#L29-L30)
-- [index.js:76-83](file://dissensus-engine/server/index.js#L76-L83)
-- [solana-balance.js:14-20](file://dissensus-engine/server/solana-balance.js#L14-L20)
-- [README.md:138-149](file://dissensus-engine/README.md#L138-L149)
+- [index.js:16-27](file://dissensus-engine/server/index.js#L16-L27)
+- [README.md:116-124](file://dissensus-engine/README.md#L116-L124)
+- [README.md:65-76](file://dissensus-engine/README.md#L65-L76)
 
-### Wallet Connection Workflow
-- Detect Phantom or Solflare provider.
-- Connect and retrieve public key.
-- Fetch balance via server endpoint.
-- Save wallet to staking inputs and refresh status.
-
-**Section sources**
-- [wallet-connect.js:17-23](file://dissensus-engine/public/js/wallet-connect.js#L17-L23)
-- [wallet-connect.js:95-116](file://dissensus-engine/public/js/wallet-connect.js#L95-L116)
-- [wallet-connect.js:63-80](file://dissensus-engine/public/js/wallet-connect.js#L63-L80)
-
-### Examples and Scenarios
-- Tier upgrades:
-  - Stake threshold increases move users from FREE to BRONZE, SILVER, GOLD, or WHALE tiers.
-- Access restrictions:
-  - When STAKING_ENFORCE is enabled, debates require a valid wallet; otherwise, limits apply only when a wallet is provided.
-- Premium feature activation:
-  - Higher tiers grant access to premium models and API access.
+### Provider Selection and Model Configuration
+The system supports three AI providers with multiple model options:
+- DeepSeek: DeepSeek V3.2 (~$0.008/debate)
+- Google Gemini: 2.0 Flash (~$0.006/debate), 2.5 Flash (~$0.03/debate), 2.5 Flash-Lite (~$0.006/debate)
+- OpenAI: GPT-4o (~$0.15/debate), GPT-4o Mini (~$0.01/debate)
 
 **Section sources**
-- [staking.js:12-19](file://dissensus-engine/server/staking.js#L12-L19)
-- [index.js:183-192](file://dissensus-engine/server/index.js#L183-L192)
-- [index.js:228-234](file://dissensus-engine/server/index.js#L228-L234)
+- [index.js:85-99](file://dissensus-engine/server/index.js#L85-L99)
+- [README.md:22-33](file://dissensus-engine/README.md#L22-L33)
 
 ### Security Considerations
 - API keys are handled client-side and never stored server-side.
-- Balance checks occur server-side using RPC endpoints to keep credentials private.
-- Rate limiting protects endpoints from abuse.
-- Consider HTTPS, authentication, and input sanitization for production.
+- Keys are saved in browser localStorage for convenience but never transmitted to servers.
+- Rate limiting protects against abuse across all endpoints.
+- Consider HTTPS, authentication, and input sanitization for production deployments.
 
 **Section sources**
-- [README.md:182-187](file://dissensus-engine/README.md#L182-L187)
-- [index.js:57-64](file://dissensus-engine/server/index.js#L57-L64)
+- [README.md:156-161](file://dissensus-engine/README.md#L156-L161)
+- [index.js:47-53](file://dissensus-engine/server/index.js#L47-L53)

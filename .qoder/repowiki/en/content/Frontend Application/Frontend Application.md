@@ -5,17 +5,22 @@
 - [index.html](file://dissensus-engine/public/index.html)
 - [styles.css](file://dissensus-engine/public/css/styles.css)
 - [app.js](file://dissensus-engine/public/js/app.js)
-- [wallet-connect.js](file://dissensus-engine/public/js/wallet-connect.js)
 - [index.js](file://dissensus-engine/server/index.js)
 - [card-generator.js](file://dissensus-engine/server/card-generator.js)
 - [metrics.js](file://dissensus-engine/server/metrics.js)
 - [metrics.html](file://dissensus-engine/public/metrics.html)
 - [debate-engine.js](file://dissensus-engine/server/debate-engine.js)
-- [staking.js](file://dissensus-engine/server/staking.js)
-- [solana-balance.js](file://dissensus-engine/server/solana-balance.js)
 - [package.json](file://dissensus-engine/package.json)
 - [README.md](file://dissensus-engine/README.md)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Removed all wallet integration documentation and references
+- Updated architecture diagrams to remove wallet-related components
+- Revised wallet connection integration section to reflect removal
+- Updated troubleshooting guide to remove wallet-related issues
+- Removed staking system documentation
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -31,7 +36,9 @@
 
 ## Introduction
 
-The Dissensus AI Debate Engine is a sophisticated frontend application that presents a real-time, multi-agent AI debate interface. The system features three AI agents (CIPHER, NOVA, and PRISM) engaging in a structured 4-phase dialectical process, with real-time streaming visualization, wallet integration, and comprehensive metrics dashboard. The frontend implements a cyberpunk-themed design with responsive layouts, agent-specific styling, and interactive elements for social media sharing.
+The Dissensus AI Debate Engine is a sophisticated frontend application that presents a real-time, multi-agent AI debate interface. The system features three AI agents (CIPHER, NOVA, and PRISM) engaging in a structured 4-phase dialectical process, with real-time streaming visualization and comprehensive metrics dashboard. The frontend implements a cyberpunk-themed design with responsive layouts, agent-specific styling, and interactive elements for social media sharing.
+
+**Updated** Removed wallet integration functionality and client-side wallet connection code that was part of the staking system.
 
 ## Project Structure
 
@@ -43,7 +50,6 @@ subgraph "Client-Side (Public)"
 A[index.html]
 B[styles.css]
 C[app.js]
-D[wallet-connect.js]
 E[metrics.html]
 end
 subgraph "Server-Side (Server)"
@@ -51,26 +57,19 @@ F[index.js]
 G[debate-engine.js]
 H[card-generator.js]
 I[metrics.js]
-J[staking.js]
-K[solana-balance.js]
 end
 subgraph "External Services"
 L[AI Providers]
-M[Solana RPC]
 N[Cloud Storage]
 end
 A --> C
 B --> C
 C --> F
-D --> F
 E --> I
 F --> G
 F --> H
 F --> I
-F --> J
-F --> K
 G --> L
-K --> M
 H --> N
 ```
 
@@ -144,34 +143,6 @@ App->>User : Show verdict panel
 - [app.js:358-427](file://dissensus-engine/public/js/app.js#L358-L427)
 - [index.js:277-302](file://dissensus-engine/server/index.js#L277-L302)
 
-### Wallet Connection Integration
-
-The wallet integration system provides seamless Solana wallet connectivity with Phantom and Solflare browsers:
-
-```mermaid
-flowchart TD
-A[User clicks Connect Wallet] --> B{Wallet Available?}
-B --> |Yes| C[Detect Phantom/Solflare]
-B --> |No| D[Open Phantom Link]
-C --> E[Call provider.connect()]
-E --> F[Get public key]
-F --> G[Update UI State]
-G --> H[Fetch $DISS Balance]
-H --> I[Sync to Staking Input]
-I --> J[Enable Features]
-D --> K[User installs wallet]
-K --> L[Refresh Page]
-L --> C
-```
-
-**Diagram sources**
-- [wallet-connect.js:95-130](file://dissensus-engine/public/js/wallet-connect.js#L95-L130)
-- [wallet-connect.js:140-174](file://dissensus-engine/public/js/wallet-connect.js#L140-L174)
-
-**Section sources**
-- [wallet-connect.js:1-176](file://dissensus-engine/public/js/wallet-connect.js#L1-L176)
-- [solana-balance.js:26-76](file://dissensus-engine/server/solana-balance.js#L26-L76)
-
 ### Responsive Design Implementation
 
 The application implements a comprehensive responsive design system using CSS Grid and Flexbox:
@@ -209,7 +180,6 @@ K[API Endpoints]
 end
 subgraph "External Integrations"
 L[AI Providers]
-M[Solana Network]
 N[Cloud Services]
 end
 A --> E
@@ -221,7 +191,6 @@ J --> I
 I --> L
 D --> K
 K --> H
-H --> M
 H --> N
 ```
 
@@ -363,8 +332,6 @@ The metrics dashboard provides comprehensive transparency reporting:
 
 **Provider Distribution**: Visual bar charts showing usage patterns across different AI providers.
 
-**Staking Analytics**: Tier distribution and debate limits for simulated staking system.
-
 **Section sources**
 - [metrics.html:387-486](file://dissensus-engine/public/metrics.html#L387-L486)
 - [metrics.js:100-132](file://dissensus-engine/server/metrics.js#L100-L132)
@@ -404,7 +371,6 @@ E[EventSource]
 F[Local Storage]
 end
 subgraph "External Dependencies"
-G[Solana Web3.js]
 H[@resvg/resvg-js]
 I[Satori]
 end
@@ -412,7 +378,6 @@ A --> D
 B --> E
 C --> D
 F --> D
-G --> D
 H --> I
 ```
 
@@ -426,16 +391,13 @@ H --> I
 
 ### Integration Points
 
-**API Integration**: The frontend integrates with multiple backend endpoints for debate orchestration, wallet verification, and metrics reporting.
+**API Integration**: The frontend integrates with multiple backend endpoints for debate orchestration and metrics reporting.
 
 **Streaming Integration**: Real-time communication through Server-Sent Events provides immediate feedback during debate execution.
-
-**External Service Integration**: Solana blockchain integration for wallet verification and token balance checking.
 
 **Section sources**
 - [index.js:69-85](file://dissensus-engine/server/index.js#L69-L85)
 - [index.js:220-311](file://dissensus-engine/server/index.js#L220-L311)
-- [solana-balance.js:26-76](file://dissensus-engine/server/solana-balance.js#L26-L76)
 
 ## Performance Considerations
 
@@ -474,11 +436,6 @@ The application implements several performance optimizations for real-time strea
 - Check network connectivity and firewall restrictions
 - Monitor rate limit quotas for AI providers
 
-**Wallet Connection Problems**:
-- Ensure Phantom or Solflare extension is installed and enabled
-- Verify wallet is unlocked and connected
-- Check Solana network connectivity
-
 **Performance Issues**:
 - Clear browser cache and cookies
 - Disable ad blockers that may interfere with streaming
@@ -486,7 +443,6 @@ The application implements several performance optimizations for real-time strea
 
 **Section sources**
 - [app.js:340-347](file://dissensus-engine/public/js/app.js#L340-L347)
-- [wallet-connect.js:95-116](file://dissensus-engine/public/js/wallet-connect.js#L95-L116)
 
 ### Debugging Tools
 
@@ -501,6 +457,8 @@ The application implements several performance optimizations for real-time strea
 The Dissensus AI Debate Engine frontend represents a sophisticated implementation of real-time AI interaction with comprehensive theming, responsive design, and robust integration capabilities. The system successfully combines modern web technologies with advanced streaming protocols to deliver an engaging user experience while maintaining excellent performance and accessibility standards.
 
 The modular architecture allows for easy extension and customization, while the comprehensive theming system provides flexibility for different visual presentations. The integration with external services demonstrates best practices for secure API communication and real-time data synchronization.
+
+**Updated** Removed wallet integration functionality and staking system, simplifying the architecture while maintaining core debate functionality.
 
 ## Appendices
 

@@ -5,18 +5,18 @@
 - [README.md](file://dissensus-engine/README.md)
 - [package.json](file://dissensus-engine/package.json)
 - [index.js](file://dissensus-engine/server/index.js)
-- [solana-balance.js](file://dissensus-engine/server/solana-balance.js)
-- [staking.js](file://dissensus-engine/server/staking.js)
-- [wallet-connect.js](file://dissensus-engine/public/js/wallet-connect.js)
 - [app.js](file://dissensus-engine/public/js/app.js)
 - [index.html](file://dissensus-engine/public/index.html)
-- [tokenomics.md](file://diss-launch-kit/copy/tokenomics.md)
-- [domain-recommendations.md](file://diss-launch-kit/copy/domain-recommendations.md)
-- [launch-tweets.md](file://diss-launch-kit/copy/launch-tweets.md)
-- [pump-fun-listing.md](file://diss-launch-kit/copy/pump-fun-listing.md)
-- [x-twitter-setup.md](file://diss-launch-kit/copy/x-twitter-setup.md)
 - [website/index.html](file://diss-launch-kit/website/index.html)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Removed all Solana blockchain integration components including wallet connection, balance checking, and staking functionality
+- Updated architecture diagrams to reflect the removal of blockchain-dependent features
+- Revised launch kit documentation to remove tokenomics and blockchain-specific marketing materials
+- Updated troubleshooting guide to remove blockchain-related error scenarios
+- Removed all references to SPL token integration, wallet providers, and blockchain-based access control
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -31,306 +31,190 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document explains the blockchain integration for the Solana token system and meme coin infrastructure behind $DISS. It covers SPL token balance verification, simulated staking tiers, and the relationship between on-chain token holdings and platform access control. It also documents tokenomics, supply distribution, and the economic model that underpins the platform’s utility evolution. Finally, it outlines launch kit components for domains, social media, and marketing automation, along with practical examples of wallet integration, balance checking, and stake management workflows.
+This document explains the current state of the Dissensus AI platform, which operates as a pure AI debate engine without blockchain integration. The platform focuses entirely on multi-agent dialectical debate functionality powered by external AI providers (DeepSeek, Gemini, OpenAI). All blockchain-dependent features including wallet connections, token balance verification, staking programs, and SPL token integration have been completely removed from the system.
+
+**Updated** Complete removal of Solana blockchain integration including token balance checking, staking program integration, and wallet connection functionality.
 
 ## Project Structure
-The blockchain integration spans two primary areas:
-- Frontend UI and wallet integration for Phantom/Solflare
-- Backend server exposing Solana balance checks and staking status
+The platform now consists solely of frontend and backend components for AI-powered debate functionality:
 
 ```mermaid
 graph TB
 subgraph "Frontend"
 UI["index.html"]
-WC["wallet-connect.js"]
 APP["app.js"]
 end
 subgraph "Backend"
 SRV["server/index.js"]
-BAL["server/solana-balance.js"]
-STAKE["server/staking.js"]
 end
-UI --> WC
 UI --> APP
 APP --> SRV
-WC --> SRV
-SRV --> BAL
-SRV --> STAKE
 ```
 
 **Diagram sources**
-- [index.html:1-217](file://dissensus-engine/public/index.html#L1-L217)
-- [wallet-connect.js:1-176](file://dissensus-engine/public/js/wallet-connect.js#L1-L176)
-- [app.js:1-674](file://dissensus-engine/public/js/app.js#L1-L674)
-- [index.js:1-481](file://dissensus-engine/server/index.js#L1-L481)
-- [solana-balance.js:1-83](file://dissensus-engine/server/solana-balance.js#L1-L83)
-- [staking.js:1-183](file://dissensus-engine/server/staking.js#L1-L183)
+- [index.html:1-186](file://dissensus-engine/public/index.html#L1-L186)
+- [app.js:1-554](file://dissensus-engine/public/js/app.js#L1-L554)
+- [index.js:1-356](file://dissensus-engine/server/index.js#L1-L356)
 
 **Section sources**
 - [README.md:103-109](file://dissensus-engine/README.md#L103-L109)
 - [package.json:10-19](file://dissensus-engine/package.json#L10-L19)
 
 ## Core Components
-- Wallet connector and balance checker: integrates Phantom/Solflare, connects wallets, and fetches $DISS SPL token balance via a server endpoint.
-- Server-side balance verification: reads on-chain SPL token balance using Solana web3 and spl-token libraries.
-- Simulated staking: demonstrates tiered access and debate limits based on token holdings; designed to evolve into on-chain staking.
-- Tokenomics and utility evolution: defines the $DISS token model, burn mechanisms, and platform access tiers.
+- **AI Debate Engine**: Pure AI-powered debate system with three agents (CIPHER, NOVA, PRISM) operating without blockchain dependencies
+- **Provider Integration**: Supports DeepSeek, Google Gemini, and OpenAI with configurable API keys
+- **Real-time Streaming**: SSE-based debate streaming with four-phase structured debate format
+- **Shareable Cards**: PNG generation for social media sharing without blockchain features
+
+**Updated** Removed all blockchain-dependent components including wallet connectors, balance verification, and staking systems.
 
 **Section sources**
-- [wallet-connect.js:95-138](file://dissensus-engine/public/js/wallet-connect.js#L95-L138)
-- [solana-balance.js:26-76](file://dissensus-engine/server/solana-balance.js#L26-L76)
-- [staking.js:12-79](file://dissensus-engine/server/staking.js#L12-L79)
-- [tokenomics.md:12-67](file://diss-launch-kit/copy/tokenomics.md#L12-L67)
+- [app.js:22-53](file://dissensus-engine/public/js/app.js#L22-L53)
+- [index.js:58-99](file://dissensus-engine/server/index.js#L58-L99)
+- [index.js:156-230](file://dissensus-engine/server/index.js#L156-L230)
 
 ## Architecture Overview
-The system separates concerns between client and server:
-- Client handles UI, wallet connection, and user actions.
-- Server validates inputs, enforces limits, streams debate results, and performs read-only on-chain balance checks.
+The system maintains a clean separation between client and server with no blockchain dependencies:
 
 ```mermaid
 sequenceDiagram
 participant Browser as "Browser"
 participant UI as "index.html"
-participant Wallet as "Phantom/Solflare"
 participant Server as "server/index.js"
-participant Balance as "solana-balance.js"
 Browser->>UI : Load page
-UI->>Wallet : Connect wallet (provider detection)
-Wallet-->>UI : Public key
-UI->>Server : GET /api/solana/token-balance?wallet=<pubkey>
-Server->>Balance : fetchDissBalance(pubkey)
-Balance-->>Server : {uiAmount, raw, decimals, mint, ata}
-Server-->>UI : JSON balance response
-UI->>UI : Display balance and staking status
+UI->>Server : GET /api/config
+Server-->>UI : Provider configuration
+UI->>Server : POST /api/debate/validate
+Server-->>UI : Validation result
+UI->>Server : GET /api/debate/stream
+Server-->>UI : SSE debate stream
+UI->>UI : Display debate results
 ```
 
 **Diagram sources**
-- [index.html:1-217](file://dissensus-engine/public/index.html#L1-L217)
-- [wallet-connect.js:95-138](file://dissensus-engine/public/js/wallet-connect.js#L95-L138)
-- [index.js:98-111](file://dissensus-engine/server/index.js#L98-L111)
-- [solana-balance.js:26-76](file://dissensus-engine/server/solana-balance.js#L26-L76)
+- [index.html:1-186](file://dissensus-engine/public/index.html#L1-L186)
+- [app.js:530-554](file://dissensus-engine/public/js/app.js#L530-L554)
+- [index.js:124-151](file://dissensus-engine/server/index.js#L124-L151)
+- [index.js:156-230](file://dissensus-engine/server/index.js#L156-L230)
 
 ## Detailed Component Analysis
 
-### Wallet Integration and Balance Verification
-- Provider detection supports Phantom and Solflare.
-- On successful connect, the UI shortens and displays the wallet address, then calls the server endpoint to fetch the SPL token balance.
-- The server validates the wallet address, queries the SPL mint and associated token account, and returns a normalized balance.
-
-```mermaid
-sequenceDiagram
-participant User as "User"
-participant WC as "wallet-connect.js"
-participant Server as "server/index.js"
-participant Balance as "solana-balance.js"
-User->>WC : Click Connect
-WC->>WC : Detect provider (Phantom/Solflare)
-WC->>Server : GET /api/solana/token-balance?wallet=<pubkey>
-Server->>Balance : fetchDissBalance(pubkey)
-Balance-->>Server : Balance details (uiAmount/raw/decimals/mint/ata)
-Server-->>WC : JSON response
-WC-->>User : Display formatted balance
-```
-
-**Diagram sources**
-- [wallet-connect.js:95-138](file://dissensus-engine/public/js/wallet-connect.js#L95-L138)
-- [index.js:98-111](file://dissensus-engine/server/index.js#L98-L111)
-- [solana-balance.js:26-76](file://dissensus-engine/server/solana-balance.js#L26-L76)
-
-**Section sources**
-- [wallet-connect.js:17-138](file://dissensus-engine/public/js/wallet-connect.js#L17-L138)
-- [index.js:98-111](file://dissensus-engine/server/index.js#L98-L111)
-- [solana-balance.js:26-76](file://dissensus-engine/server/solana-balance.js#L26-L76)
-
-### Server-Side Balance Verification
-- Validates wallet address format and throws a specific error for invalid inputs.
-- Resolves mint decimals and derives the associated token account (ATA) for the owner.
-- Reads the SPL token account and returns normalized values; on missing accounts, returns zero with a note.
+### AI Debate System
+- **Multi-Agent Architecture**: Three distinct AI agents (CIPHER, NOVA, PRISM) operate independently without blockchain coordination
+- **Structured Debate Format**: Four-phase debate progression (Analysis, Arguments, Cross-Examination, Verdict)
+- **External Provider Support**: Configurable integration with DeepSeek, Google Gemini, and OpenAI APIs
 
 ```mermaid
 flowchart TD
-Start(["Entry: fetchDissBalance(wallet)"]) --> Normalize["Normalize wallet address"]
-Normalize --> Valid{"Valid address?"}
-Valid --> |No| ErrInvalid["Throw INVALID_WALLET"]
-Valid --> |Yes| ResolveMint["Resolve mint from env or default"]
-ResolveMint --> DeriveATA["Derive ATA for owner + mint"]
-DeriveATA --> TryRead["Try getAccount(ATA)"]
-TryRead --> Found{"Account found?"}
-Found --> |Yes| Format["Format uiAmount by decimals"]
-Found --> |No| ReturnZero["Return 0 with note"]
-Format --> Done(["Return balance details"])
-ReturnZero --> Done
-ErrInvalid --> Done
+A["User submits topic"] --> B["Validate input"]
+B --> C["Connect to selected AI provider"]
+C --> D["Stream debate phases via SSE"]
+D --> E["Display structured results"]
+E --> F["Generate shareable card"]
 ```
 
 **Diagram sources**
-- [solana-balance.js:26-76](file://dissensus-engine/server/solana-balance.js#L26-L76)
+- [app.js:208-341](file://dissensus-engine/public/js/app.js#L208-L341)
+- [index.js:156-230](file://dissensus-engine/server/index.js#L156-L230)
 
 **Section sources**
-- [solana-balance.js:14-76](file://dissensus-engine/server/solana-balance.js#L14-L76)
+- [app.js:15-19](file://dissensus-engine/public/js/app.js#L15-L19)
+- [app.js:208-341](file://dissensus-engine/public/js/app.js#L208-L341)
+- [index.js:156-230](file://dissensus-engine/server/index.js#L156-L230)
 
-### Simulated Staking and Access Control
-- Defines tier thresholds and daily debate limits.
-- Enforces debate gating when STAKING_ENFORCE is enabled.
-- Demonstrates staking simulation for UI and demos; production would integrate on-chain stake programs.
-
-```mermaid
-flowchart TD
-A["User submits topic"] --> B{"STAKING_ENFORCE enabled?"}
-B --> |Yes| C["Require wallet param"]
-B --> |No| D["Proceed without wallet"]
-C --> E{"canDebate(wallet)"}
-E --> |Allowed| F["Start debate"]
-E --> |Denied| G["Reject with reason"]
-D --> F
-F --> H["Record usage (daily reset)"]
-H --> I["Update tier & remaining debates"]
-```
-
-**Diagram sources**
-- [index.js:184-192](file://dissensus-engine/server/index.js#L184-L192)
-- [app.js:228-236](file://dissensus-engine/public/js/app.js#L228-L236)
-- [staking.js:110-125](file://dissensus-engine/server/staking.js#L110-L125)
-
-**Section sources**
-- [staking.js:12-79](file://dissensus-engine/server/staking.js#L12-L79)
-- [index.js:184-192](file://dissensus-engine/server/index.js#L184-L192)
-- [app.js:228-236](file://dissensus-engine/public/js/app.js#L228-L236)
-
-### Tokenomics and Utility Evolution
-- $DISS is an SPL token on Solana launched via pump.fun with a fair launch and bonding curve.
-- Utility evolves from meme → access → premium features → governance, with burn mechanics and revenue sharing.
-- Platform access tiers are defined by minimum $DISS holdings.
+### Provider Configuration and API Management
+- **Dynamic Provider Selection**: Users can choose between DeepSeek, Gemini, and OpenAI with automatic model configuration
+- **API Key Handling**: Supports both user-supplied keys and server-side keys for reduced friction
+- **Rate Limiting**: Built-in protection against abuse with configurable limits per provider
 
 ```mermaid
 flowchart LR
-Meme["$DISS Meme"] --> Access["Platform Access"]
-Access --> Premium["Premium Features"]
-Premium --> Governance["Governance"]
-Premium -. burn/revenue share .-> Meme
+Config["/api/config"] --> Providers["Available Providers"]
+Providers --> Models["Model Configuration"]
+Models --> Keys["API Key Management"]
+Keys --> Validation["Request Validation"]
 ```
 
 **Diagram sources**
-- [tokenomics.md:29-53](file://diss-launch-kit/copy/tokenomics.md#L29-L53)
-- [tokenomics.md:56-67](file://diss-launch-kit/copy/tokenomics.md#L56-L67)
+- [index.js:58-99](file://dissensus-engine/server/index.js#L58-L99)
+- [app.js:59-100](file://dissensus-engine/public/js/app.js#L59-L100)
 
 **Section sources**
-- [tokenomics.md:12-67](file://diss-launch-kit/copy/tokenomics.md#L12-L67)
+- [index.js:58-99](file://dissensus-engine/server/index.js#L58-L99)
+- [app.js:59-100](file://dissensus-engine/public/js/app.js#L59-L100)
 
-### Launch Kit: Domains, Social, and Automation
-- Domain recommendations emphasize .fun/.io/.xyz/.ai for crypto-native branding and availability.
-- X/Twitter setup includes profile, pinned tweets, and post-launch content calendar.
-- Pump.fun listing details and marketing automation templates support coordinated launches.
-
-```mermaid
-graph TB
-Domains["Domain Recommendations"] --> Brand["Brand Identity"]
-Twitter["Twitter Setup"] --> Engage["Community Engagement"]
-Tweets["Launch Tweets"] --> Automate["Marketing Automation"]
-Pump["Pump.fun Listing"] --> Drive["Launch Drive"]
-```
-
-**Diagram sources**
-- [domain-recommendations.md:1-67](file://diss-launch-kit/copy/domain-recommendations.md#L1-L67)
-- [x-twitter-setup.md:1-128](file://diss-launch-kit/copy/x-twitter-setup.md#L1-L128)
-- [launch-tweets.md:1-177](file://diss-launch-kit/copy/launch-tweets.md#L1-L177)
-- [pump-fun-listing.md:1-36](file://diss-launch-kit/copy/pump-fun-listing.md#L1-L36)
+### Shareable Card Generation
+- **Social Media Integration**: Generates PNG cards for Twitter/X sharing with debate results
+- **Automatic Summarization**: Optional verdict summarization when server keys are available
+- **Direct Download**: One-click card generation and download functionality
 
 **Section sources**
-- [domain-recommendations.md:1-67](file://diss-launch-kit/copy/domain-recommendations.md#L1-L67)
-- [x-twitter-setup.md:1-128](file://diss-launch-kit/copy/x-twitter-setup.md#L1-L128)
-- [launch-tweets.md:1-177](file://diss-launch-kit/copy/launch-tweets.md#L1-L177)
-- [pump-fun-listing.md:1-36](file://diss-launch-kit/copy/pump-fun-listing.md#L1-L36)
-- [website/index.html:1-541](file://diss-launch-kit/website/index.html#L1-L541)
+- [index.js:257-291](file://dissensus-engine/server/index.js#L257-L291)
+- [app.js:494-527](file://dissensus-engine/public/js/app.js#L494-L527)
 
 ## Dependency Analysis
-- Client depends on server endpoints for balance and staking status.
-- Server depends on Solana web3 and spl-token libraries for read-only balance checks.
-- Environment variables configure RPC, mint, and optional staking program ID.
+The system maintains minimal dependencies focused purely on AI debate functionality:
 
 ```mermaid
 graph LR
-WC["wallet-connect.js"] --> IDX["server/index.js"]
-APP["app.js"] --> IDX
-IDX --> BAL["solana-balance.js"]
-IDX --> STK["staking.js"]
-PKG["package.json"] --> BAL
-PKG --> STK
+APP["app.js"] --> IDX["server/index.js"]
+PKG["package.json"] --> IDX
+IDX --> Express["express"]
+IDX --> Helmet["helmet"]
+IDX --> RateLimit["express-rate-limit"]
+IDX --> Satori["@resvg/resvg-js"]
+IDX --> Satori["satori"]
 ```
 
 **Diagram sources**
-- [wallet-connect.js:1-176](file://dissensus-engine/public/js/wallet-connect.js#L1-L176)
-- [app.js:1-674](file://dissensus-engine/public/js/app.js#L1-L674)
-- [index.js:1-481](file://dissensus-engine/server/index.js#L1-L481)
-- [solana-balance.js:1-83](file://dissensus-engine/server/solana-balance.js#L1-L83)
-- [staking.js:1-183](file://dissensus-engine/server/staking.js#L1-L183)
-- [package.json:10-19](file://dissensus-engine/package.json#L10-L19)
+- [app.js:1-554](file://dissensus-engine/public/js/app.js#L1-L554)
+- [index.js:1-356](file://dissensus-engine/server/index.js#L1-L356)
+- [package.json:10-17](file://dissensus-engine/package.json#L10-L17)
 
 **Section sources**
-- [package.json:10-19](file://dissensus-engine/package.json#L10-L19)
-- [index.js:1-481](file://dissensus-engine/server/index.js#L1-L481)
+- [package.json:10-17](file://dissensus-engine/package.json#L10-L17)
+- [index.js:1-356](file://dissensus-engine/server/index.js#L1-L356)
 
 ## Performance Considerations
-- Rate limiting protects endpoints from abuse; adjust windows and max values per environment.
-- Balance and staking endpoints use moderate limits appropriate for demos; scale as traffic increases.
-- Client-side balance polling should be throttled; leverage server-provided UI updates and SSE for debate streaming.
-
-[No sources needed since this section provides general guidance]
+- **Rate Limiting**: Configured per endpoint to prevent abuse while supporting normal usage patterns
+- **Memory Management**: Efficient streaming prevents memory buildup during long debates
+- **Client Optimization**: Debates automatically abort after 10 minutes to prevent resource exhaustion
 
 ## Troubleshooting Guide
-Common issues and resolutions:
-- Invalid wallet address: ensure the address is a valid Solana public key; the server returns a specific error code for invalid inputs.
-- Missing token account: when a wallet has no SPL token account yet, the server returns zero with a note; prompt users to receive or fund $DISS first.
-- Provider not detected: if Phantom/Solflare is not installed, the client opens a link and instructs the user to install and refresh.
-- Rate limits: if receiving “Too many” responses, wait for the rate limit window to reset.
+Common issues and resolutions for the current non-blockchain system:
+- **API Key Issues**: Ensure valid API keys for chosen provider; server will reject requests without proper authentication
+- **Network Connectivity**: Check internet connection and provider service availability
+- **Rate Limits**: Wait for rate limit windows to reset if receiving "Too many" responses
+- **Timeout Errors**: Debates exceeding 10-minute duration are automatically terminated
 
 **Section sources**
-- [solana-balance.js:28-44](file://dissensus-engine/server/solana-balance.js#L28-L44)
-- [solana-balance.js:64-74](file://dissensus-engine/server/solana-balance.js#L64-L74)
-- [wallet-connect.js:96-100](file://dissensus-engine/public/js/wallet-connect.js#L96-L100)
-- [index.js:90-96](file://dissensus-engine/server/index.js#L90-L96)
+- [index.js:145-148](file://dissensus-engine/server/index.js#L145-L148)
+- [app.js:326-329](file://dissensus-engine/public/js/app.js#L326-L329)
 
 ## Conclusion
-The $DISS blockchain integration combines a secure, read-only SPL token balance check with a simulated staking system that models future on-chain governance and access control. The launch kit provides a complete playbook for domains, social media, and marketing automation. Together, these components enable a seamless user experience from wallet connection to platform access, with clear pathways to evolve into on-chain staking and governance.
-
-[No sources needed since this section summarizes without analyzing specific files]
+The Dissensus AI platform now operates as a pure AI-powered debate engine without any blockchain dependencies. The system provides a streamlined experience focused entirely on multi-agent debate functionality with external AI provider integration. All blockchain-related features including wallet connections, token balances, and staking have been completely removed, resulting in a simpler, more focused platform.
 
 ## Appendices
 
 ### Example Workflows
 
-- Wallet integration and balance checking
-  - Connect Phantom/Solflare from the header.
-  - The UI calls the server endpoint to fetch the SPL balance and displays it.
-  - Reference paths:
-    - [index.html:30-60](file://dissensus-engine/public/index.html#L30-L60)
-    - [wallet-connect.js:95-138](file://dissensus-engine/public/js/wallet-connect.js#L95-L138)
-    - [index.js:98-111](file://dissensus-engine/server/index.js#L98-L111)
-    - [solana-balance.js:26-76](file://dissensus-engine/server/solana-balance.js#L26-L76)
+- **Basic Debate Workflow**
+  - Select AI provider and model from the interface
+  - Enter debate topic and click "Start Debate"
+  - View real-time streaming results across four debate phases
+  - Generate and download shareable cards for social media
 
-- Stake management (simulated)
-  - Save a wallet, refresh status, simulate stake/unstake, and observe tier benefits.
-  - Reference paths:
-    - [app.js:492-554](file://dissensus-engine/public/js/app.js#L492-L554)
-    - [staking.js:43-79](file://dissensus-engine/server/staking.js#L43-L79)
+- **Provider Configuration**
+  - Choose between DeepSeek, Gemini, or OpenAI
+  - Configure API keys or use server-side keys when available
+  - Automatic model selection based on provider choice
 
-- Relationship between blockchain activity and platform access
-  - When STAKING_ENFORCE is enabled, debates require a valid wallet; daily limits depend on tier.
-  - Reference paths:
-    - [index.js:184-192](file://dissensus-engine/server/index.js#L184-L192)
-    - [app.js:228-236](file://dissensus-engine/public/js/app.js#L228-L236)
-    - [staking.js:12-79](file://dissensus-engine/server/staking.js#L12-L79)
+- **Shareable Card Generation**
+  - Create PNG cards from debate results
+  - Direct download for social media sharing
+  - Automatic verdict summarization when server keys are configured
 
-- Tokenomics and utility evolution
-  - Review supply distribution, burn mechanics, and tiered access.
-  - Reference paths:
-    - [tokenomics.md:12-67](file://diss-launch-kit/copy/tokenomics.md#L12-L67)
-
-- Launch kit components
-  - Domain recommendations, Twitter setup, launch tweets, and pump.fun listing.
-  - Reference paths:
-    - [domain-recommendations.md:1-67](file://diss-launch-kit/copy/domain-recommendations.md#L1-L67)
-    - [x-twitter-setup.md:1-128](file://diss-launch-kit/copy/x-twitter-setup.md#L1-L128)
-    - [launch-tweets.md:1-177](file://diss-launch-kit/copy/launch-tweets.md#L1-L177)
-    - [pump-fun-listing.md:1-36](file://diss-launch-kit/copy/pump-fun-listing.md#L1-L36)
-    - [website/index.html:1-541](file://diss-launch-kit/website/index.html#L1-L541)
+**Section sources**
+- [app.js:208-341](file://dissensus-engine/public/js/app.js#L208-L341)
+- [index.js:156-230](file://dissensus-engine/server/index.js#L156-L230)
+- [index.js:257-291](file://dissensus-engine/server/index.js#L257-L291)

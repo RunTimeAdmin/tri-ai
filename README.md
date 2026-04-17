@@ -22,8 +22,7 @@ Create the repo on GitHub first (empty, no README), then run the commands above.
 ```
 tri-ai/
 ├── dissensus-engine/     # Main app — live LLM debates (Node.js)
-├── diss-launch-kit/      # Landing page (dissensus.fun)
-├── forum/                # Research-powered forum (Python/Flask)
+├── webpage/              # Landing page (dissensus.fun)
 ├── ROADMAP.md            # Product roadmap
 └── README.md             # This file
 ```

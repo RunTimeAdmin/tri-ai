@@ -12,6 +12,7 @@ const { DebateEngine, PROVIDERS } = require('./debate-engine');
 const { generateCard, summarizeVerdictForCard } = require('./card-generator');
 const { getDebateOfTheDay } = require('./debate-of-the-day');
 const { recordDebate, recordError, getPublicMetrics, getRecentTopics } = require('./metrics');
+const { saveDebate, getDebate, listRecent } = require('./debate-store');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,6 +33,24 @@ const SERVER_KEYS = {
   deepseek: process.env.DEEPSEEK_API_KEY,
   gemini: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY
 };
+
+/**
+ * Sanitize and validate debate topic.
+ * Prevents prompt injection and strips control characters.
+ */
+function sanitizeTopic(topic) {
+    if (!topic || typeof topic !== 'string') throw new Error('Invalid topic');
+    let sanitized = topic.replace(/[\x00-\x1F\x7F]/g, '').trim();
+    if (sanitized.length < 3) throw new Error('Topic too short (min 3 chars)');
+    if (sanitized.length > 500) throw new Error('Topic too long (max 500 chars)');
+    // Strip sequences that could manipulate LLM system prompts
+    sanitized = sanitized.replace(/\b(system|assistant|user)\s*:/gi, '')
+                         .replace(/```/g, '')
+                         .replace(/<\|.*?\|>/g, '')
+                         .trim();
+    if (!sanitized) throw new Error('Topic cannot be empty after sanitization');
+    return sanitized;
+}
 
 // ----------------------------------------------------------
 // Middleware
@@ -56,12 +75,12 @@ const debateLimiter = rateLimit({
 // Config - which providers have server-side keys
 // ----------------------------------------------------------
 app.get('/api/config', (req, res) => {
-  const serverKeys = {};
-  for (const [provider, key] of Object.entries(SERVER_KEYS)) {
-    serverKeys[provider] = !!key;
-  }
+  // Return list of available providers (those with server keys configured)
+  const availableProviders = Object.entries(SERVER_KEYS)
+    .filter(([, key]) => !!key)
+    .map(([provider]) => provider);
   res.json({
-    serverKeys,
+    availableProviders,
     maxTopicLength: 500
   });
 });
@@ -98,12 +117,11 @@ app.get('/api/providers', (req, res) => {
   res.json(providers);
 });
 
-// ----------------------------------------------------------
-// Validate model exists for provider
-// ----------------------------------------------------------
-function getEffectiveApiKey(provider, userApiKey) {
-  const trimmed = (userApiKey || '').trim();
-  if (trimmed) return trimmed; // User's own key takes precedence
+// ── API Key Security ──────────────────────────────────────────
+// API keys are ALWAYS loaded from server-side environment variables.
+// Client requests NEVER provide or influence API key selection.
+// Keys: DEEPSEEK_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY in .env
+function getEffectiveApiKey(provider) {
   const serverKey = SERVER_KEYS[provider];
   if (serverKey) return serverKey;
   return null;
@@ -122,53 +140,55 @@ function validateModel(provider, model) {
 // Validate debate params (preflight - EventSource can't show 400 errors)
 // ----------------------------------------------------------
 app.post('/api/debate/validate', async (req, res) => {
-  const { topic, apiKey, provider, model } = req.body || {};
-  const topicTrimmed = (topic || '').toString().trim();
+  const { topic, provider, model } = req.body || {};
+  
+  let topicTrimmed;
+  try {
+    topicTrimmed = sanitizeTopic(topic);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+  
   const providerName = ((provider || 'deepseek') + '').toLowerCase();
   const modelId = model || (providerName === 'deepseek' ? 'deepseek-chat' : providerName === 'gemini' ? 'gemini-2.0-flash' : 'gpt-4o');
-
-  if (!topicTrimmed) {
-    return res.status(400).json({ error: 'Missing topic' });
-  }
-  if (topicTrimmed.length < 3) {
-    return res.status(400).json({ error: 'Topic must be at least 3 characters' });
-  }
-  if (topicTrimmed.length > 500) {
-    return res.status(400).json({ error: 'Topic must be 500 characters or less' });
-  }
 
   const modelCheck = validateModel(providerName, modelId);
   if (!modelCheck.valid) {
     return res.status(400).json({ error: modelCheck.error });
   }
 
-  const effectiveKey = getEffectiveApiKey(providerName, (apiKey || '').trim());
+  const effectiveKey = getEffectiveApiKey(providerName);
   if (!effectiveKey) {
-    return res.status(400).json({ error: `API key required. Set ${providerName.toUpperCase()}_API_KEY in .env or enter your key.` });
+    return res.status(400).json({ error: `API key required. Set ${providerName.toUpperCase()}_API_KEY in server .env.` });
   }
 
   res.json({ ok: true });
+});
+
+// ── Debate Persistence Endpoints ──────────────────────────────
+app.get('/api/debate/:id', (req, res) => {
+    const debate = getDebate(req.params.id);
+    if (!debate) return res.status(404).json({ error: 'Debate not found' });
+    res.json(debate);
+});
+
+app.get('/api/debates/recent', (req, res) => {
+    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    res.json(listRecent(limit));
 });
 
 // ----------------------------------------------------------
 // Start Debate — SSE Streaming Endpoint
 // ----------------------------------------------------------
 app.get('/api/debate/stream', debateLimiter, async (req, res) => {
-  const { topic, apiKey, provider, model } = req.query;
+  const { topic, provider, model } = req.query;
 
-  // Input validation
-  if (!topic || typeof topic !== 'string') {
-    res.status(400).json({ error: 'Missing or invalid topic' });
-    return;
-  }
-
-  const topicTrimmed = topic.trim();
-  if (topicTrimmed.length < 3) {
-    res.status(400).json({ error: 'Topic must be at least 3 characters' });
-    return;
-  }
-  if (topicTrimmed.length > 500) {
-    res.status(400).json({ error: 'Topic must be 500 characters or less' });
+  // Input validation with sanitization
+  let topicTrimmed;
+  try {
+    topicTrimmed = sanitizeTopic(topic);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
     return;
   }
 
@@ -181,10 +201,10 @@ app.get('/api/debate/stream', debateLimiter, async (req, res) => {
     return;
   }
 
-  const effectiveKey = getEffectiveApiKey(providerName, apiKey?.trim());
+  const effectiveKey = getEffectiveApiKey(providerName);
   if (!effectiveKey) {
     res.status(400).json({
-      error: `API key required. Please enter your ${providerName} API key, or set ${providerName.toUpperCase()}_API_KEY in server .env`
+      error: `API key required. Set ${providerName.toUpperCase()}_API_KEY in server .env.`
     });
     return;
   }
@@ -197,7 +217,12 @@ app.get('/api/debate/stream', debateLimiter, async (req, res) => {
     'X-Accel-Buffering': 'no'
   });
 
+  const debateRecord = { topic: topicTrimmed, provider: providerName, model: modelId, phases: [], timestamp: new Date().toISOString() };
+  
   const sendEvent = (type, data) => {
+    // Accumulate for persistence
+    debateRecord.phases.push({ type, ...data });
+    // Send to client
     try {
       res.write(`data: ${JSON.stringify({ type, ...data })}\n\n`);
     } catch (e) {
@@ -216,7 +241,8 @@ app.get('/api/debate/stream', debateLimiter, async (req, res) => {
 
     if (!aborted) {
       recordDebate(topicTrimmed, providerName, modelId);
-      res.write('data: [DONE]\n\n');
+      const debateId = saveDebate(debateRecord);
+      res.write(`data: ${JSON.stringify({ type: 'done', debateId })}\n\n`);
       res.end();
     }
   } catch (error) {

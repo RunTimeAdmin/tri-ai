@@ -8,10 +8,10 @@
 
 | Phase | Focus | Timeline |
 |-------|-------|----------|
-| **1** | Launch & Community | Q3 2025 → Q1 2026 |
-| **2** | Platform Live | Q1–Q2 2026 |
-| **3** | Premium Features | Q2–Q3 2026 |
-| **4** | Scale & Ecosystem | Q3 2026+ |
+| **1** | Launch & Community | Q3 2025 → Q1 2026 (Completed) |
+| **2** | Platform Live | Q2–Q3 2026 (Current) |
+| **3** | Premium Features | Q3–Q4 2026 |
+| **4** | Scale & Ecosystem | Q4 2026+ |
 
 ---
 
@@ -20,7 +20,7 @@
 **Goal:** Brand awareness, community growth, platform beta.
 
 ### Website & Brand
-- [x] dissensus.fun landing page
+- [x] dissensus.fun landing page — done
 - [x] Dissensus branding and positioning
 - [x] "3 AI Minds. 1 Truth." positioning
 - [x] Launch App CTAs
@@ -31,8 +31,12 @@
 - [ ] Telegram group
 - [ ] Community growth campaign
 
+### Infrastructure
+- [x] VPS deployment — done
+- [x] SSL/HTTPS — done
+
 ### Status
-**Current:** Landing page ready. App deployed on VPS (app.dissensus.fun).
+**Completed:** Landing page live. App deployed on VPS (app.dissensus.fun). SSL/HTTPS configured.
 
 ---
 
@@ -44,17 +48,22 @@
 - [x] VPS deployment (app.dissensus.fun)
 - [x] DeepSeek integration (server-side API key)
 - [x] Production hardening (rate limit, security, graceful shutdown)
+- [x] API key security hardened (server-side only)
+- [x] Topic input sanitization (prompt injection prevention)
+- [x] Debate persistence with shareable permalinks
+- [x] Repository cleanup (removed duplicate deployments)
 - [ ] Dissensus branding in app UI
-- [ ] User accounts and session management
+- [ ] User accounts and saved debates (upcoming)
+- [ ] Premium features exploration
 
 ### Website
-- [ ] DNS: app.dissensus.fun → VPS
-- [ ] SSL verified
-- [ ] Landing → App flow tested
+- [x] DNS: app.dissensus.fun → VPS
+- [x] SSL verified
+- [x] Landing → App flow tested
 
 ### Product
-- [ ] Three agents live (CIPHER, NOVA, PRISM)
-- [ ] 4-phase debate working end-to-end
+- [x] Three agents live (CIPHER, NOVA, PRISM)
+- [x] 4-phase debate working end-to-end
 - [ ] First community debates (showcase/case studies)
 
 ### Future Provider Expansion
@@ -62,7 +71,7 @@
 - [ ] OpenAI integration (if needed)
 
 ### Status
-**Target:** Q1–Q2 2026. App is deployable; add branding and user features.
+**Current:** Q2–Q3 2026. Core platform operational; user features in development.
 
 ---
 
@@ -82,7 +91,7 @@
 - [ ] Developer documentation
 
 ### Status
-**Target:** Q2–Q3 2026.
+**Target:** Q3–Q4 2026.
 
 ---
 
@@ -104,7 +113,7 @@
 - [ ] B2B / white-label potential
 
 ### Status
-**Target:** Q3 2026 and beyond.
+**Target:** Q4 2026 and beyond.
 
 ---
 
@@ -114,7 +123,7 @@
 |-----------|--------|
 | Landing page live (Hostinger) | Ready |
 | App on VPS (app.dissensus.fun) | Ready |
-| DNS + SSL for app subdomain | Pending |
+| DNS + SSL for app subdomain | Done |
 | Server-side DeepSeek API key | Ready |
 | Rate limiting, security headers | Done |
 | Dissensus branding in app | Pending |

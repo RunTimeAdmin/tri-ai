@@ -47,13 +47,9 @@
     <section class="setup-panel">
         <h2>⚡ Dissensus Debate Engine</h2>
         <p class="subtitle">3 AI Minds. 1 Truth. Enter a topic and watch the agents battle it out.</p>
-        <p class="provider-note">Use DeepSeek, Gemini, or OpenAI — add your API key for your preferred provider, or use the server's if configured.</p>
+        <p class="provider-note">Select an AI provider to start debating. Server administrators configure API keys via environment variables.</p>
 
         <div class="input-row" style="margin-bottom: 1rem;">
-            <div class="input-group">
-                <label>API Key</label>
-                <input type="password" id="apiKeyInput" placeholder="sk-... or AIza..." autocomplete="off">
-            </div>
             <div class="input-group">
                 <label>Provider</label>
                 <select id="providerSelect" onchange="updateModels()">
@@ -174,6 +170,7 @@
             <div class="verdict-actions">
                 <button class="btn-copy-verdict" id="copyVerdictBtn" onclick="copyVerdict()" title="Copy to clipboard">📋 Copy</button>
                 <button class="btn-share-card" id="shareCardBtn" onclick="shareCard()" title="Download shareable card for Twitter">🖼️ Share Card</button>
+                <button id="shareDebate" style="display:none;" class="btn btn-secondary">Share Debate</button>
             </div>
         </div>
         <div class="verdict-content" id="verdictContent"></div>

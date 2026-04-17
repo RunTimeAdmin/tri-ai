@@ -21,14 +21,16 @@ The Dissensus AI Debate Engine is a multi-agent dialectical debate system where 
 
 ## 💰 Supported AI Providers & Pricing
 
-| Provider | Model | Cost/Debate | Quality | Speed | API Key |
-|----------|-------|------------|---------|-------|---------|
-| **🔥 DeepSeek** | V3.2 | **~$0.008** | Very Good | Fast | [platform.deepseek.com](https://platform.deepseek.com/api_keys) |
-| **⚡ Google Gemini** | 2.0 Flash | **~$0.006** | Good | Very Fast | [aistudio.google.com](https://aistudio.google.com/apikey) |
-| **⚡ Google Gemini** | 2.5 Flash | **~$0.03** | Very Good | Fast | [aistudio.google.com](https://aistudio.google.com/apikey) |
-| **⚡ Google Gemini** | 2.5 Flash-Lite | **~$0.006** | Good | Very Fast | [aistudio.google.com](https://aistudio.google.com/apikey) |
-| **🧠 OpenAI** | GPT-4o | **~$0.15** | Excellent | Medium | [platform.openai.com](https://platform.openai.com/api-keys) |
-| **🧠 OpenAI** | GPT-4o Mini | **~$0.01** | Good | Fast | [platform.openai.com](https://platform.openai.com/api-keys) |
+API keys are configured **server-side only** via environment variables. Users do NOT need to provide API keys.
+
+| Provider | Model | Cost/Debate | Quality | Speed |
+|----------|-------|------------|---------|-------|
+| **🔥 DeepSeek** | V3.2 | **~$0.008** | Very Good | Fast |
+| **⚡ Google Gemini** | 2.0 Flash | **~$0.006** | Good | Very Fast |
+| **⚡ Google Gemini** | 2.5 Flash | **~$0.03** | Very Good | Fast |
+| **⚡ Google Gemini** | 2.5 Flash-Lite | **~$0.006** | Good | Very Fast |
+| **🧠 OpenAI** | GPT-4o | **~$0.15** | Excellent | Medium |
+| **🧠 OpenAI** | GPT-4o Mini | **~$0.01** | Good | Fast |
 
 **Recommended:** DeepSeek V3.2 for best value, or Gemini 2.5 Flash for the free tier.
 
@@ -36,18 +38,25 @@ The Dissensus AI Debate Engine is a multi-agent dialectical debate system where 
 
 ### Prerequisites
 - **Node.js 18+** (download from https://nodejs.org/)
-- **API Key** from any supported provider (DeepSeek, Google, or OpenAI)
+- **API Key** from at least one supported provider (DeepSeek, Google, or OpenAI)
 
 ### Installation
 
-```bash
+```powershell
 # 1. Navigate to the project directory
 cd dissensus-engine
 
 # 2. Install dependencies
 npm install
 
-# 3. Start the server
+# 3. Configure environment variables
+copy .env.example .env
+# Edit .env and add your API keys:
+# DEEPSEEK_API_KEY=sk-your-key
+# OPENAI_API_KEY=sk-your-key
+# GOOGLE_API_KEY=your-key
+
+# 4. Start the server
 npm start
 ```
 
@@ -56,22 +65,26 @@ The server will start on **http://localhost:3000**
 ### Usage
 
 1. Open **http://localhost:3000** in your browser
-2. Select your **AI Provider** (DeepSeek, Gemini, or OpenAI)
-3. Enter your **API Key** (or use server key if configured — see VPS deploy)
-4. Select a **model**
-5. Type a **debate topic**
-6. Click **⚡ Start Debate** and watch the agents battle it out in real-time!
+2. Select an **AI Provider** (DeepSeek, Gemini, or OpenAI)
+3. Select a **Model**
+4. Type a **Debate Topic**
+5. Click **⚡ Start Debate** and watch the agents battle it out in real-time!
 
 ### VPS Deployment (Server-Side API Keys)
 
-For production, set API keys in `.env` so visitors can debate without entering keys:
+For production deployment, API keys are configured exclusively via server-side environment variables:
 
-```bash
-cp .env.example .env
-# Edit .env and add:
-DEEPSEEK_API_KEY=sk-your-key    # Recommended — ~$0.008/debate
-# Optional: OPENAI_API_KEY, GOOGLE_API_KEY (or GEMINI_API_KEY)
+```powershell
+# Copy example environment file
+copy .env.example .env
+
+# Edit .env and add your API keys:
+# DEEPSEEK_API_KEY=sk-your-key    # Recommended — ~$0.008/debate
+# OPENAI_API_KEY=sk-your-key
+# GOOGLE_API_KEY=your-key (or GEMINI_API_KEY)
 ```
+
+**Security Note:** Clients never provide or influence API key selection. All keys are loaded server-side from the `.env` file.
 
 See **docs/DEPLOY-VPS.md** for the full Hostinger deployment guide.
 
@@ -155,9 +168,12 @@ CMD ["node", "server/index.js"]
 
 ## 🔒 Security Notes
 
-- API keys are entered client-side and sent directly to the AI provider — they never touch server storage
-- Keys are saved in browser localStorage per provider for convenience
-- For production: consider adding rate limiting, authentication, and HTTPS
+- **API keys are server-side only** — configured via `.env` environment variables
+- Clients never provide, see, or influence API key selection
+- All API calls to AI providers are made from the server, not the client
+- Rate limiting is enabled (10 debates/minute per IP in production)
+- Topics are sanitized to prevent prompt injection attacks
+- For production: enable HTTPS and consider adding authentication
 
 ## 🎨 Customization
 

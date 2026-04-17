@@ -2,20 +2,22 @@
 
 <cite>
 **Referenced Files in This Document**
-- [tokenomics.md](file://diss-launch-kit/copy/tokenomics.md)
-- [launch-tweets.md](file://diss-launch-kit/copy/launch-tweets.md)
-- [pump-fun-listing.md](file://diss-launch-kit/copy/pump-fun-listing.md)
-- [domain-recommendations.md](file://diss-launch-kit/copy/domain-recommendations.md)
-- [x-twitter-setup.md](file://diss-launch-kit/copy/x-twitter-setup.md)
+- [README.md](file://README.md)
+- [ROADMAP.md](file://ROADMAP.md)
 - [index.html](file://diss-launch-kit/website/index.html)
-- [styles.css](file://diss-launch-kit/website/styles.css)
-- [staking.js](file://dissensus-engine/server/staking.js)
-- [solana-balance.js](file://dissensus-engine/server/solana-balance.js)
-- [debate-engine.js](file://dissensus-engine/server/debate-engine.js)
-- [debate-of-the-day.js](file://dissensus-engine/server/debate-of-the-day.js)
 - [index.js](file://dissensus-engine/server/index.js)
+- [debate-engine.js](file://dissensus-engine/server/debate-engine.js)
 - [package.json](file://dissensus-engine/package.json)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Complete removal of all tokenomics documentation and cryptocurrency references
+- Updated architecture overview to reflect pure AI debate platform without token mechanics
+- Removed all staking, tier, and access control mechanisms
+- Updated economic model section to reflect non-token-based monetization
+- Revised launch strategy to focus on community building and platform adoption
+- Removed Solana integration and blockchain-related components
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -30,364 +32,236 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document explains the $DISS token economic model and tokenomics as implemented in the repository. It covers the token’s supply and distribution, utility evolution across phases, access tiers driven by token holdings, staking mechanics, daily debate limits, premium feature gating, launch strategy, community incentives, sustainability model, revenue streams, and buyback/burn mechanisms. It also connects blockchain activity (Solana SPL token) to platform monetization and growth.
+This document explains the Dissensus AI debate platform and its current non-token-based economic model. The platform has pivoted away from cryptocurrency mechanics to focus purely on AI-powered multi-agent debate services. The system operates as a web-based debate engine where three distinct AI agents (CIPHER, NOVA, and PRISM) engage in structured 4-phase dialectical debates on any topic submitted by users.
+
+**Updated** The platform now operates as a pure AI service without tokenomics, staking, or blockchain integration. All previous token-based access controls, premium features, and economic mechanisms have been removed.
 
 ## Project Structure
-The repository organizes tokenomics assets and platform logic into two primary areas:
-- Launch kit: marketing, tokenomics copy, and website assets that communicate the token model externally.
-- Platform engine: server-side logic that simulates staking, validates access tiers, integrates with Solana for token balance checks, and orchestrates debates.
+The repository organizes the platform into three main components:
+- **dissensus-engine**: Core AI debate server built with Node.js and Express
+- **diss-launch-kit**: Marketing website and landing page assets
+- **forum**: Research-powered discussion platform (Python/Flask)
 
 ```mermaid
 graph TB
+subgraph "Dissensus Engine"
+E1["server/index.js"]
+E2["server/debate-engine.js"]
+E3["server/agents.js"]
+E4["server/card-generator.js"]
+E5["server/metrics.js"]
+E6["package.json"]
+end
 subgraph "Launch Kit"
-TK1["tokenomics.md"]
-TK2["launch-tweets.md"]
-TK3["pump-fun-listing.md"]
-TK4["domain-recommendations.md"]
-TK5["x-twitter-setup.md"]
-TK6["website/index.html"]
-TK7["website/styles.css"]
+L1["website/index.html"]
+L2["website/styles.css"]
+L3["website/images/characters/*"]
 end
-subgraph "Platform Engine"
-PE1["server/index.js"]
-PE2["server/staking.js"]
-PE3["server/solana-balance.js"]
-PE4["server/debate-engine.js"]
-PE5["server/debate-of-the-day.js"]
-PE6["package.json"]
+subgraph "Forum"
+F1["forum/index.html"]
+F2["forum/server.py"]
+F3["forum/styles.css"]
 end
-TK6 --> PE1
-PE1 --> PE2
-PE1 --> PE3
-PE1 --> PE4
-PE1 --> PE5
-PE6 --> PE1
+E1 --> E2
+E1 --> E3
+E1 --> E4
+E1 --> E5
+E6 --> E1
+L1 --> E1
 ```
 
 **Diagram sources**
-- [index.html:1-541](file://diss-launch-kit/website/index.html#L1-L541)
-- [index.js:1-481](file://dissensus-engine/server/index.js#L1-L481)
-- [staking.js:1-183](file://dissensus-engine/server/staking.js#L1-183)
-- [solana-balance.js:1-83](file://dissensus-engine/server/solana-balance.js#L1-83)
-- [debate-engine.js:1-389](file://dissensus-engine/server/debate-engine.js#L1-389)
-- [debate-of-the-day.js:1-80](file://dissensus-engine/server/debate-of-the-day.js#L1-80)
-- [package.json:1-28](file://dissensus-engine/package.json#L1-28)
+- [index.js:1-356](file://dissensus-engine/server/index.js#L1-L356)
+- [debate-engine.js:1-399](file://dissensus-engine/server/debate-engine.js#L1-L399)
+- [index.html:1-451](file://diss-launch-kit/website/index.html#L1-L451)
 
 **Section sources**
-- [index.html:1-541](file://diss-launch-kit/website/index.html#L1-L541)
-- [index.js:1-481](file://dissensus-engine/server/index.js#L1-L481)
+- [README.md:20-29](file://README.md#L20-L29)
+- [index.js:1-356](file://dissensus-engine/server/index.js#L1-L356)
 
 ## Core Components
-- Token supply and distribution: fair launch on pump.fun with bonding curve, auto LP burn, and Raydium migration.
-- Token utility phases: meme → platform access → premium features → governance.
-- Access tiers: FREE, BRONZE, SILVER, GOLD, WHALE, governed by simulated staking thresholds.
-- Daily debate limits: enforced by staking module with per-wallet reset.
-- Premium features: custom agents, Deep Research Mode (burn), private debates, API access.
-- Sustainability: burn mechanics, governance-driven buybacks, and developer monetization via API.
-- Blockchain integration: Solana SPL token balance reads and mint configuration.
+The platform consists of several key components that work together to deliver AI-powered debate services:
+
+- **AI Debate Engine**: Multi-agent system with CIPHER (Skeptic), NOVA (Advocate), and PRISM (Synthesizer) agents
+- **Web Interface**: Real-time debate streaming via Server-Sent Events (SSE)
+- **Research Integration**: Web-based research capabilities for factual grounding
+- **Card Generation**: PNG export functionality for social sharing
+- **Metrics System**: Public analytics and performance monitoring
+- **Provider Integration**: Support for OpenAI, DeepSeek, and Google Gemini APIs
+
+**Updated** All components operate independently of any token-based access control or economic mechanisms. The platform focuses purely on delivering high-quality AI debate services.
 
 **Section sources**
-- [tokenomics.md:1-112](file://diss-launch-kit/copy/tokenomics.md#L1-L112)
-- [staking.js:12-19](file://dissensus-engine/server/staking.js#L12-L19)
-- [index.js:177-215](file://dissensus-engine/server/index.js#L177-L215)
+- [debate-engine.js:41-399](file://dissensus-engine/server/debate-engine.js#L41-L399)
+- [index.js:124-311](file://dissensus-engine/server/index.js#L124-L311)
 
 ## Architecture Overview
-The platform exposes a server API that:
-- Validates debate requests and enforces staking-based access gates.
-- Reads $DISS token balances from Solana for wallet verification.
-- Streams debate results via Server-Sent Events.
-- Provides staking status, tiers, and simulated stake/unstake endpoints.
-- Exposes metrics and governance-ready endpoints for transparency.
+The platform exposes a RESTful API that processes debate requests and streams results in real-time:
 
 ```mermaid
 sequenceDiagram
-participant Client as "Client App"
+participant Client as "Client Browser"
 participant API as "Express Server (index.js)"
-participant Stake as "Staking Module (staking.js)"
-participant Sol as "Solana Balance (solana-balance.js)"
 participant Engine as "Debate Engine (debate-engine.js)"
-Client->>API : POST /api/debate/validate {topic, provider, model, wallet}
-API->>Stake : canDebate(wallet)
-Stake-->>API : allowed=true/false + remaining
-API->>Sol : fetchDissBalance(wallet)
-Sol-->>API : uiAmount, decimals, mint
-API-->>Client : 200 OK or 400/403 error
-Client->>API : GET /api/debate/stream {topic, provider, model, wallet}
+participant Provider as "LLM Provider"
+Client->>API : POST /api/debate/validate
+API->>API : Validate topic and model
+API-->>Client : 200 OK
+Client->>API : GET /api/debate/stream
 API->>Engine : runDebate(topic)
-Engine-->>API : SSE chunks (phases, agents)
-API-->>Client : SSE stream [DONE]
-API->>Stake : recordDebateUsage(wallet)
+Engine->>Provider : Streamed API calls
+Provider-->>Engine : Response chunks
+Engine-->>API : SSE events (phases, agents)
+API-->>Client : Real-time debate stream
 ```
 
 **Diagram sources**
-- [index.js:177-311](file://dissensus-engine/server/index.js#L177-L311)
-- [staking.js:110-136](file://dissensus-engine/server/staking.js#L110-L136)
-- [solana-balance.js:26-76](file://dissensus-engine/server/solana-balance.js#L26-L76)
-- [debate-engine.js:121-386](file://dissensus-engine/server/debate-engine.js#L121-L386)
+- [index.js:124-230](file://dissensus-engine/server/index.js#L124-L230)
+- [debate-engine.js:131-396](file://dissensus-engine/server/debate-engine.js#L131-L396)
 
 ## Detailed Component Analysis
 
-### Token Supply, Distribution, and Launch Strategy
-- Total supply: 1 billion $DISS.
-- Creator allocation: 0% (fair launch enforced by pump.fun).
-- Bonding curve: 100% supply on curve; auto migration to Raydium at ~$69K market cap.
-- LP burn: automatic burn of liquidity tokens upon migration.
-- Launch platform: pump.fun; branding and listing assets included for visibility.
+### AI Debate Engine and Multi-Agent System
+The core debate engine implements a sophisticated 4-phase dialectical process:
+
+- **Phase 1: Independent Analysis** - Each agent conducts private analysis
+- **Phase 2: Opening Arguments** - Formal positions presented
+- **Phase 3: Cross-Examination** - Agents challenge each other's arguments
+- **Phase 4: Final Verdict** - PRISM delivers synthesized consensus
 
 ```mermaid
 flowchart TD
-Start(["Token Launch"]) --> Fair["Fair Launch on pump.fun"]
-Fair --> Curve["100% Supply on Bonding Curve"]
-Curve --> PriceDiscovery["Organic Price Discovery"]
-PriceDiscovery --> Cap{"Market Cap ~$69K?"}
-Cap --> |Yes| Migrate["Auto Migration to Raydium"]
-Migrate --> LPBurn["Auto LP Tokens Burned"]
-LPBurn --> End(["Permanent Liquidity"])
-Cap --> |No| Continue["Continue Trading"]
+Start(["User Topic"]) --> Phase1["Independent Analysis"]
+Phase1 --> Phase2["Opening Arguments"]
+Phase2 --> Phase3["Cross-Examination"]
+Phase3 --> Phase4["Final Verdict"]
+Phase4 --> End(["Ranked Consensus"])
 ```
 
 **Diagram sources**
-- [tokenomics.md:14-19](file://diss-launch-kit/copy/tokenomics.md#L14-L19)
-- [pump-fun-listing.md:14-35](file://diss-launch-kit/copy/pump-fun-listing.md#L14-L35)
+- [debate-engine.js:149-396](file://dissensus-engine/server/debate-engine.js#L149-L396)
 
 **Section sources**
-- [tokenomics.md:14-26](file://diss-launch-kit/copy/tokenomics.md#L14-L26)
-- [pump-fun-listing.md:14-35](file://diss-launch-kit/copy/pump-fun-listing.md#L14-L35)
+- [debate-engine.js:41-399](file://dissensus-engine/server/debate-engine.js#L41-L399)
 
-### Token Utility Evolution and Platform Access Tiers
-- Phase 1 (meme): community building, social engagement, brand awareness.
-- Phase 2 (platform access): hold $DISS for platform access; free tier allows limited debates, higher tiers unlock unlimited debates and premium features.
-- Phase 3 (premium): custom agents, Deep Research Mode (burn per query), private debates, API access.
-- Phase 4 (governance): voting on agents and features, revenue sharing, buyback & burn program.
+### API Endpoints and Service Architecture
+The platform provides several key endpoints for debate processing:
 
-Access tiers (simulated):
-- FREE: 1 debate/day (default).
-- BRONZE: 5 debates/day.
-- SILVER: 20 debates/day.
-- GOLD: unlimited debates/day.
-- WHALE: unlimited debates/day and full feature set.
+- `/api/debate/validate`: Pre-flight validation for debate requests
+- `/api/debate/stream`: Real-time debate streaming via SSE
+- `/api/providers`: Available AI providers and models
+- `/api/config`: Server configuration and capabilities
+- `/api/card`: PNG card generation for social sharing
+- `/api/metrics`: Public analytics and performance data
 
-```mermaid
-classDiagram
-class Tiers {
-+FREE(min : 0, debatesPerDay : 1)
-+BRONZE(min : 100000, debatesPerDay : 5)
-+SILVER(min : 500000, debatesPerDay : 20)
-+GOLD(min : 1000000, debatesPerDay : -1)
-+WHALE(min : 10000000, debatesPerDay : -1)
-}
-class StakingModule {
-+getTier(amount)
-+getStakingInfo(wallet)
-+simulateStake(wallet, amount)
-+simulateUnstake(wallet)
-+canDebate(wallet)
-+recordDebateUsage(wallet)
-}
-Tiers <.. StakingModule : "thresholds"
-```
-
-**Diagram sources**
-- [staking.js:12-19](file://dissensus-engine/server/staking.js#L12-L19)
-- [staking.js:35-79](file://dissensus-engine/server/staking.js#L35-L79)
+**Updated** All endpoints operate without token-based access control or premium feature gating.
 
 **Section sources**
-- [tokenomics.md:36-52](file://diss-launch-kit/copy/tokenomics.md#L36-L52)
-- [staking.js:12-19](file://dissensus-engine/server/staking.js#L12-L19)
+- [index.js:58-311](file://dissensus-engine/server/index.js#L58-L311)
 
-### Staking Mechanics and Daily Debate Limits
-- Staking is simulated in the server module; production would integrate with on-chain stake programs.
-- Daily debate allowance resets per wallet; usage increments after successful debates.
-- Wallet normalization ensures valid Solana addresses.
-- Optional enforcement flag enables wallet requirement and daily caps.
+### Provider Integration and Model Support
+The system integrates with multiple AI providers with configurable API keys:
 
-```mermaid
-flowchart TD
-A["User submits wallet"] --> B["normalizeWallet()"]
-B --> C{"Wallet valid?"}
-C --> |No| E["Reject request"]
-C --> |Yes| D["getStakingInfo(wallet)"]
-D --> F{"Tier debatesPerDay"}
-F --> |1| G["Allow 1 debate/day"]
-F --> |5| H["Allow 5 debates/day"]
-F --> |20| I["Allow 20 debates/day"]
-F --> |-1| J["Allow unlimited"]
-J --> K["Record usage after debate"]
-G --> K
-H --> K
-I --> K
-```
-
-**Diagram sources**
-- [staking.js:147-154](file://dissensus-engine/server/staking.js#L147-L154)
-- [staking.js:43-79](file://dissensus-engine/server/staking.js#L43-L79)
-- [staking.js:127-136](file://dissensus-engine/server/staking.js#L127-L136)
+- **OpenAI**: GPT-4o and GPT-4o-mini models
+- **DeepSeek**: DeepSeek V3.2 model
+- **Google Gemini**: Gemini 2.5 Flash, 2.0 Flash, and 2.5 Flash-Lite models
 
 **Section sources**
-- [staking.js:1-183](file://dissensus-engine/server/staking.js#L1-L183)
-- [index.js:177-215](file://dissensus-engine/server/index.js#L177-L215)
+- [debate-engine.js:14-39](file://dissensus-engine/server/debate-engine.js#L14-L39)
 
-### Premium Feature Access and Burn Mechanisms
-- Custom agent creation: requires staking $DISS.
-- Deep Research Mode: burns $DISS per query; increases demand and reduces supply.
-- Private debates: token-gated exclusive sessions.
-- API access: developers pay in $DISS to integrate Dissensus.
-- Governance: holders vote on new agents and features; revenue shared back to token holders via buybacks and burns.
+### Real-Time Streaming and User Experience
+The platform implements Server-Sent Events (SSE) for real-time debate streaming:
 
-```mermaid
-flowchart TD
-Hold["$DISS held"] --> Gate{"Tier Threshold Met?"}
-Gate --> |No| Free["Basic access"]
-Gate --> |BRONZE/SILVER/GOLD/WHALE| Premium["Premium features"]
-Premium --> Burn["Burn mechanics (e.g., Deep Research Mode)"]
-Burn --> Deflation["Reduced supply"]
-Premium --> Governance["Governance rights"]
-Governance --> Buyback["Revenue-backed buyback & burn"]
-```
-
-**Diagram sources**
-- [tokenomics.md:42-52](file://diss-launch-kit/copy/tokenomics.md#L42-L52)
-- [tokenomics.md:58-67](file://diss-launch-kit/copy/tokenomics.md#L58-L67)
+- Progressive disclosure of debate phases
+- Real-time agent responses as they're generated
+- Structured event types for client-side rendering
+- Automatic cleanup and graceful error handling
 
 **Section sources**
-- [tokenomics.md:42-67](file://diss-launch-kit/copy/tokenomics.md#L42-L67)
+- [index.js:192-230](file://dissensus-engine/server/index.js#L192-L230)
 
-### Blockchain Integration and Solana Balance Checks
-- Server reads $DISS SPL token balances via Solana RPC using configured mint and wallet.
-- Normalizes wallet addresses and handles missing accounts gracefully.
-- Exposes endpoint for clients to validate balances without leaking secrets.
+### Website and Marketing Assets
+The launch kit provides comprehensive marketing materials:
 
-```mermaid
-sequenceDiagram
-participant Client as "Client"
-participant API as "Server /api/solana/token-balance"
-participant RPC as "Solana RPC"
-Client->>API : GET ?wallet=...
-API->>RPC : getMint + getAccount
-RPC-->>API : uiAmount/raw/decimals/mint/ata
-API-->>Client : JSON balance response
-```
+- **Landing Page**: Professional website with hero section, feature cards, and roadmap
+- **Agent Profiles**: Detailed character bios and reasoning approaches
+- **Process Visualization**: Four-phase debate methodology explanation
+- **Community Building**: Social media links and engagement CTAs
 
-**Diagram sources**
-- [solana-balance.js:26-76](file://dissensus-engine/server/solana-balance.js#L26-L76)
-- [index.js:98-111](file://dissensus-engine/server/index.js#L98-L111)
+**Updated** The website emphasizes platform features and community building rather than token-based access or economic mechanics.
 
 **Section sources**
-- [solana-balance.js:1-83](file://dissensus-engine/server/solana-balance.js#L1-L83)
-- [index.js:88-122](file://dissensus-engine/server/index.js#L88-L122)
-
-### Debate Engine and Platform Usage
-- Multi-agent debate pipeline with 4 phases: independent analysis, opening arguments, cross-examination, and synthesis.
-- Integrates with OpenAI, DeepSeek, and Google Gemini APIs.
-- Streams results via Server-Sent Events for real-time user experience.
-
-```mermaid
-sequenceDiagram
-participant Client as "Client"
-participant API as "Server /api/debate/stream"
-participant Engine as "DebateEngine"
-participant LLM as "Provider API"
-Client->>API : GET /api/debate/stream?topic&provider&model&wallet
-API->>Engine : runDebate(topic)
-Engine->>LLM : Streamed prompts (phase 1..4)
-LLM-->>Engine : Chunked responses
-Engine-->>API : SSE events (phase updates)
-API-->>Client : SSE stream
-```
-
-**Diagram sources**
-- [debate-engine.js:121-386](file://dissensus-engine/server/debate-engine.js#L121-L386)
-- [index.js:220-311](file://dissensus-engine/server/index.js#L220-L311)
-
-**Section sources**
-- [debate-engine.js:1-389](file://dissensus-engine/server/debate-engine.js#L1-L389)
-- [index.js:218-311](file://dissensus-engine/server/index.js#L218-L311)
-
-### External Communication and Community Assets
-- Website highlights tokenomics, evolution, roadmap, and CT-focused messaging.
-- Launch tweets outline problem/solution narrative, token role, roadmap, and call to action.
-- X/Twitter setup defines profile, pinned tweet, and follow-up threads.
-- Domain recommendations emphasize .fun and .ai domains for branding and utility alignment.
-
-```mermaid
-graph TB
-Website["Website index.html"] --> Tokenomics["Tokenomics content"]
-Website --> Roadmap["Roadmap visuals"]
-Tweets["Launch tweets"] --> Awareness["Community engagement"]
-Twitter["Twitter setup"] --> Awareness
-Domains["Domain recommendations"] --> Branding[".fun/.ai branding"]
-```
-
-**Diagram sources**
-- [index.html:275-355](file://diss-launch-kit/website/index.html#L275-L355)
-- [launch-tweets.md:5-102](file://diss-launch-kit/copy/launch-tweets.md#L5-L102)
-- [x-twitter-setup.md:3-73](file://diss-launch-kit/copy/x-twitter-setup.md#L3-L73)
-- [domain-recommendations.md:20-46](file://diss-launch-kit/copy/domain-recommendations.md#L20-L46)
-
-**Section sources**
-- [index.html:275-402](file://diss-launch-kit/website/index.html#L275-L402)
-- [launch-tweets.md:1-177](file://diss-launch-kit/copy/launch-tweets.md#L1-L177)
-- [x-twitter-setup.md:1-128](file://diss-launch-kit/copy/x-twitter-setup.md#L1-L128)
-- [domain-recommendations.md:1-67](file://diss-launch-kit/copy/domain-recommendations.md#L1-L67)
+- [index.html:1-451](file://diss-launch-kit/website/index.html#L1-L451)
 
 ## Dependency Analysis
-- Express server orchestrates staking, Solana balance, debate streaming, and metrics.
-- Staking module provides tier thresholds and usage tracking.
-- Solana balance module abstracts RPC calls and mint configuration.
-- Debate engine encapsulates provider integrations and streaming.
-- Website assets depend on server-provided configuration and endpoints.
+The platform has minimal external dependencies focused on AI provider integration and web serving:
 
 ```mermaid
 graph LR
-Express["server/index.js"] --> Staking["server/staking.js"]
-Express --> Solana["server/solana-balance.js"]
-Express --> Engine["server/debate-engine.js"]
-Express --> Dotenv["dotenv (package.json)"]
-Website["website/index.html"] --> Express
+Express["Express Server"] --> Helmet["Security Headers"]
+Express --> RateLimit["Rate Limiting"]
+Express --> SSE["Server-Sent Events"]
+Engine["Debate Engine"] --> Providers["AI Providers"]
+Engine --> Metrics["Metrics System"]
+Website["Marketing Site"] --> Server["Express Server"]
 ```
 
 **Diagram sources**
-- [index.js:1-481](file://dissensus-engine/server/index.js#L1-L481)
-- [package.json:10-19](file://dissensus-engine/package.json#L10-L19)
-- [index.html:1-541](file://diss-launch-kit/website/index.html#L1-L541)
+- [index.js:6-14](file://dissensus-engine/server/index.js#L6-L14)
+- [package.json:1-28](file://dissensus-engine/package.json#L1-L28)
 
 **Section sources**
-- [index.js:1-481](file://dissensus-engine/server/index.js#L1-L481)
+- [index.js:1-356](file://dissensus-engine/server/index.js#L1-L356)
 - [package.json:1-28](file://dissensus-engine/package.json#L1-L28)
 
 ## Performance Considerations
-- Rate limiting protects endpoints from abuse during debate and staking operations.
-- SSE streaming avoids polling and reduces latency for real-time debate results.
-- Server-side API keys minimize client exposure and enable scalable provider usage.
-- Daily reset logic prevents gaming of limits and maintains fairness across tiers.
+The platform implements several optimizations for scalability and reliability:
 
-[No sources needed since this section provides general guidance]
+- **Rate Limiting**: Prevents abuse and ensures fair resource distribution
+- **Graceful Degradation**: Automatic fallbacks for provider failures
+- **Memory Management**: Proper cleanup of SSE connections and API timeouts
+- **CORS Configuration**: Secure cross-origin resource sharing
+- **Health Monitoring**: Built-in health check endpoint for infrastructure
+
+**Updated** Performance optimizations focus on API response times and real-time streaming rather than token-based access optimization.
 
 ## Troubleshooting Guide
-Common issues and mitigations:
-- Invalid wallet address: ensure proper Solana address normalization and length checks.
-- Missing or invalid API key: configure provider keys in environment or pass user key.
-- Daily debate limit reached: increase stake to qualify for higher tiers.
-- Balance endpoint failures: verify RPC URL and mint configuration; handle missing accounts gracefully.
+Common issues and solutions for the current platform implementation:
+
+- **API Key Issues**: Ensure proper provider API keys are configured in environment variables
+- **Network Connectivity**: Verify outbound connectivity to AI provider endpoints
+- **Rate Limiting**: Monitor 429 responses and implement client-side backoff
+- **Streaming Problems**: Check SSE compatibility and network stability
+- **Provider Failures**: Implement retry logic and graceful error handling
 
 **Section sources**
-- [solana-balance.js:26-76](file://dissensus-engine/server/solana-balance.js#L26-L76)
-- [index.js:177-215](file://dissensus-engine/server/index.js#L177-L215)
-- [index.js:220-311](file://dissensus-engine/server/index.js#L220-L311)
-- [staking.js:147-154](file://dissensus-engine/server/staking.js#L147-L154)
+- [index.js:104-151](file://dissensus-engine/server/index.js#L104-L151)
+- [debate-engine.js:72-95](file://dissensus-engine/server/debate-engine.js#L72-L95)
 
 ## Conclusion
-The $DISS token model blends a fair, transparent launch with a clear utility progression. The platform uses simulated staking to enforce access tiers and daily debate limits, while integrating Solana for token balance verification. Premium features and governance rights incentivize long-term holding and participation. Burn mechanisms and potential buybacks support deflationary pressure and revenue recycling. External assets reinforce community-building and brand positioning, aligning tokenomics with platform growth and user engagement.
+The Dissensus platform has successfully pivoted to a pure AI debate service without cryptocurrency mechanics. The current architecture focuses on delivering high-quality multi-agent debate experiences through real-time streaming, structured dialectical processes, and comprehensive provider integration. The platform operates as a community-driven service with transparent monetization through premium features and developer access, rather than token-based economic mechanisms.
 
-[No sources needed since this section summarizes without analyzing specific files]
+**Updated** The platform's economic model centers on sustainable growth through community engagement, premium feature adoption, and developer partnerships, eliminating the complexity and volatility associated with token-based systems.
 
 ## Appendices
 
-### Economic Sustainability and Monetization Highlights
-- Revenue streams: API access, premium features, governance participation.
-- Sustainability: burn mechanics, buyback & burn program, LP permanence.
-- Community incentives: tiered access, governance participation, and viral branding.
+### Current Development Roadmap
+The platform follows a phased development approach focused on community building and service enhancement:
+
+- **Phase 1**: Launch & Community (Q3 2025 - Q1 2026)
+- **Phase 2**: Platform Live (Q1 - Q2 2026)  
+- **Phase 3**: Premium Features (Q2 - Q3 2026)
+- **Phase 4**: Scale & Ecosystem (Q3 2026+)
 
 **Section sources**
-- [tokenomics.md:48-67](file://diss-launch-kit/copy/tokenomics.md#L48-L67)
-- [tokenomics.md:101-107](file://diss-launch-kit/copy/tokenomics.md#L101-L107)
+- [ROADMAP.md:1-135](file://ROADMAP.md#L1-L135)
+
+### Non-Token-Based Monetization Strategy
+The platform employs a straightforward monetization approach:
+
+- **Premium Features**: Enhanced debate capabilities and advanced analytics
+- **Developer Access**: API access for integration and customization
+- **Community Growth**: Organic user acquisition through quality service
+- **Partnerships**: Strategic collaborations with media and educational institutions
+
+**Updated** This approach eliminates the complexities of token economics while focusing on sustainable business growth through service excellence.

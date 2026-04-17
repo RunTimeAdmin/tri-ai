@@ -9,7 +9,7 @@
 let isDebating = false;
 let currentPhase = 0;
 let eventSource = null;
-let serverKeys = {}; // Which providers have server-side API keys
+let availableProviders = []; // Providers with server keys configured
 let lastDebateTopic = ''; // For Share Card
 
 const agentPhaseContent = {
@@ -60,9 +60,7 @@ function updateModels() {
   const provider = $('providerSelect').value;
   const config = PROVIDER_CONFIG[provider];
   const modelSelect = $('modelSelect');
-  const hasServerKey = serverKeys[provider];
-  const apiKeyInput = $('apiKeyInput');
-  const apiKeyGroup = apiKeyInput?.closest('.input-group');
+  const hasServerKey = availableProviders.includes(provider);
 
   // Update model dropdown
   modelSelect.innerHTML = '';
@@ -73,28 +71,14 @@ function updateModels() {
     modelSelect.appendChild(opt);
   });
 
-  // API key: optional when server has key, always allow user override
-  if (apiKeyInput) {
-    apiKeyInput.placeholder = hasServerKey ? 'Optional: your key (uses server key if empty)' : config.placeholder;
-    apiKeyInput.required = !hasServerKey;
-    if (apiKeyGroup) {
-      apiKeyGroup.classList.toggle('server-key-mode', hasServerKey);
-      apiKeyGroup.title = hasServerKey ? 'Enter your own key to use your API quota, or leave empty to use server key' : '';
-    }
-  }
-
   // Update hint based on provider
   $('providerHint').innerHTML = hasServerKey
-    ? `✓ <strong>Server key active</strong> for ${config.label} — No API key needed. Optional: enter your own to use your quota.`
-    : config.hint;
+    ? `✓ <strong>Server key active</strong> for ${config.label} — Ready to debate.`
+    : `<span style="color: #ff6b6b;">⚠ ${config.label} is not configured. Contact the administrator.</span>`;
 
   // Restore saved model for this provider
   const savedModel = localStorage.getItem(`dissensus_model_${provider}`);
   if (savedModel) modelSelect.value = savedModel;
-
-  // Restore saved API key
-  const savedKey = localStorage.getItem(`dissensus_apikey_${provider}`) || '';
-  if ($('apiKeyInput')) $('apiKeyInput').value = savedKey;
 
   localStorage.setItem('dissensus_provider', provider);
 }
@@ -211,16 +195,13 @@ async function startDebate() {
   const modelSelect = $('modelSelect');
   const provider = providerSelect ? providerSelect.value : 'deepseek';
   const model = modelSelect ? modelSelect.value : 'deepseek-chat';
-  const apiKeyInput = $('apiKeyInput');
-  const apiKey = (apiKeyInput && apiKeyInput.value || '').trim();
   const topicInput = $('topicInput');
   const topic = (topicInput && topicInput.value || '').trim();
-  const hasServerKey = serverKeys[provider];
+  const hasServerKey = availableProviders.includes(provider);
 
-  if (!hasServerKey && !apiKey) {
+  if (!hasServerKey) {
     const config = PROVIDER_CONFIG[provider];
-    alert(`Please enter your ${config.label.replace(/[🔥⚡🧠] /g, '')} API key.`);
-    if (apiKeyInput) apiKeyInput.focus();
+    alert(`${config.label.replace(/[🔥⚡🧠] /g, '')} is not configured on this server.`);
     return;
   }
 
@@ -237,8 +218,7 @@ async function startDebate() {
   if (isDebating) return;
   isDebating = true;
 
-  // Save settings per provider (don't save API key if using server key)
-  if (!hasServerKey) localStorage.setItem(`dissensus_apikey_${provider}`, apiKey);
+  // Save settings per provider
   localStorage.setItem(`dissensus_model_${provider}`, model);
   localStorage.setItem('dissensus_provider', provider);
 
@@ -262,7 +242,7 @@ async function startDebate() {
 
   // Preflight validation (EventSource can't show 400 error messages)
   try {
-    const validateBody = { topic, apiKey, provider, model };
+    const validateBody = { topic, provider, model };
 
     const validateRes = await fetch('/api/debate/validate', {
       method: 'POST',
@@ -280,7 +260,6 @@ async function startDebate() {
 
   // Connect to SSE stream using fetch (better error handling than EventSource)
   const params = new URLSearchParams({ topic, provider, model });
-  if (apiKey) params.set('apiKey', apiKey);
   const streamUrl = `/api/debate/stream?${params.toString()}`;
 
   const rawText = { cipher: {}, nova: {}, prism: {} };
@@ -314,6 +293,14 @@ async function startDebate() {
             debateComplete();
             return;
           }
+          // Handle done event with debateId
+          try {
+            const parsedDone = JSON.parse(data);
+            if (parsedDone.type === 'done' && parsedDone.debateId) {
+              debateCompleteWithId(parsedDone.debateId);
+              return;
+            }
+          } catch (e) { /* not a done event */ }
           try {
             const parsed = JSON.parse(data);
             handleDebateEvent(parsed, rawText);
@@ -418,6 +405,80 @@ function debateComplete() {
   $('btnSpinner').classList.add('hidden');
   setHeaderStatus(false, 'Debate complete');
   for (let i = 1; i <= 4; i++) setPhase(i, 'done');
+}
+
+function debateCompleteWithId(debateId) {
+  debateComplete();
+  // Update URL with debate ID for sharing
+  if (debateId) {
+    const newUrl = new URL(window.location);
+    newUrl.searchParams.set('debate', debateId);
+    window.history.pushState({}, '', newUrl);
+    // Show share button
+    showShareButton();
+  }
+}
+
+function showShareButton() {
+  const shareBtn = $('shareDebate');
+  if (shareBtn) {
+    shareBtn.style.display = 'inline-flex';
+    shareBtn.onclick = () => {
+      navigator.clipboard.writeText(window.location.href);
+      shareBtn.textContent = 'Link Copied!';
+      setTimeout(() => { shareBtn.textContent = 'Share Debate'; }, 2000);
+    };
+  }
+}
+
+async function loadSavedDebate(debateId) {
+  try {
+    const res = await fetch(`/api/debate/${encodeURIComponent(debateId)}`);
+    if (!res.ok) throw new Error('Debate not found');
+    const debate = await res.json();
+    
+    // Reset UI first
+    resetDebateUI();
+    
+    // Show debate arena
+    $('phaseProgress').classList.remove('hidden');
+    $('debateArena').classList.add('visible');
+    $('verdictPanel').classList.remove('visible');
+    
+    // Set the topic display
+    const topicDisplay = $('debateTopic');
+    if (topicDisplay) topicDisplay.textContent = debate.topic;
+    
+    // Also set the input value
+    const topicInput = $('topicInput');
+    if (topicInput) topicInput.value = debate.topic;
+    
+    // Store topic for Share Card
+    lastDebateTopic = debate.topic;
+    
+    // Replay each event to populate the UI
+    const rawText = { cipher: {}, nova: {}, prism: {} };
+    debate.phases.forEach(event => {
+      handleDebateEvent(event, rawText);
+    });
+    
+    // Mark all phases as done
+    for (let i = 1; i <= 4; i++) setPhase(i, 'done');
+    
+    // Show verdict panel if we have phase 4 content
+    const hasVerdict = debate.phases.some(e => e.type === 'debate-done');
+    if (hasVerdict) {
+      $('verdictPanel').classList.add('visible');
+    }
+    
+    // Show share button
+    showShareButton();
+    
+    setHeaderStatus(false, 'Loaded saved debate');
+  } catch (err) {
+    console.error('Failed to load saved debate:', err);
+    alert('Failed to load saved debate: ' + err.message);
+  }
 }
 
 function debateError(message) {
@@ -533,7 +594,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const res = await fetch('/api/config');
     if (res.ok) {
       const cfg = await res.json();
-      serverKeys = cfg.serverKeys || {};
+      availableProviders = cfg.availableProviders || [];
     }
   } catch (e) {
     console.warn('Could not fetch /api/config:', e);
@@ -551,4 +612,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Debate of the Day
   loadDebateOfTheDay();
+
+  // Check for saved debate permalink
+  const params = new URLSearchParams(window.location.search);
+  const debateId = params.get('debate');
+  if (debateId) loadSavedDebate(debateId);
 });
