@@ -558,53 +558,56 @@ function showShareButton() {
   }
 }
 
-async function loadSavedDebate(debateId) {
+async function loadSavedDebate(debateId, silent = false) {
   try {
     const res = await fetch(`/api/debate/${encodeURIComponent(debateId)}`);
     if (!res.ok) throw new Error('Debate not found');
     const debate = await res.json();
-    
+
     // Reset UI first
     resetDebateUI();
-    
+
     // Show debate arena
     $('phaseProgress').classList.remove('hidden');
     $('debateArena').classList.add('visible');
     $('verdictPanel').classList.remove('visible');
-    
+
     // Set the topic display
     const topicDisplay = $('debateTopic');
     if (topicDisplay) topicDisplay.textContent = debate.topic;
-    
+
     // Also set the input value
     const topicInput = $('topicInput');
     if (topicInput) topicInput.value = debate.topic;
-    
+
     // Store topic for Share Card
     lastDebateTopic = debate.topic;
-    
+
     // Replay each event to populate the UI
     const rawText = { cipher: {}, nova: {}, prism: {} };
     debate.phases.forEach(event => {
       handleDebateEvent(event, rawText);
     });
-    
+
     // Mark all phases as done
     for (let i = 1; i <= 4; i++) setPhase(i, 'done');
-    
+
     // Show verdict panel if we have phase 4 content
     const hasVerdict = debate.phases.some(e => e.type === 'debate-done');
     if (hasVerdict) {
       $('verdictPanel').classList.add('visible');
     }
-    
+
     // Show share button
     showShareButton();
-    
+
     setHeaderStatus(false, 'Loaded saved debate');
   } catch (err) {
     console.error('Failed to load saved debate:', err);
-    alert('Failed to load saved debate: ' + err.message);
+    if (!silent) {
+      alert('Failed to load saved debate: ' + err.message);
+    }
+    throw err;
   }
 }
 
@@ -774,5 +777,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Check for saved debate permalink
   const params = new URLSearchParams(window.location.search);
   const debateId = params.get('debate');
-  if (debateId) loadSavedDebate(debateId);
+  if (debateId) {
+    loadSavedDebate(debateId, true).catch(() => {
+      const newUrl = new URL(window.location);
+      newUrl.searchParams.delete('debate');
+      history.replaceState({}, '', newUrl);
+    });
+  }
 });

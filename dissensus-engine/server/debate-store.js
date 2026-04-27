@@ -10,6 +10,7 @@ function ensureDir() {
         fs.mkdirSync(DATA_DIR, { recursive: true });
     }
 }
+ensureDir();
 
 /**
  * Save a completed debate to disk.

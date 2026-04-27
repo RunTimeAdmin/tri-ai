@@ -276,43 +276,6 @@ app.get('/api/workspaces/:id/debates', authMiddleware, (req, res) => {
     res.json(wsDebates);
 });
 
-// ── Debate Persistence Endpoints ──────────────────────────────
-app.get('/api/debate/:id', (req, res) => {
-    const debate = getDebate(req.params.id);
-    if (!debate) return res.status(404).json({ error: 'Debate not found' });
-    res.json(debate);
-});
-
-// Structured JSON export
-app.get('/api/debate/:id/export/json', (req, res) => {
-    const debate = getDebate(req.params.id);
-    if (!debate) return res.status(404).json({ error: 'Debate not found' });
-    const structured = formatDebateJSON(debate);
-    res.setHeader('Content-Disposition', `attachment; filename="dissensus-${req.params.id.substring(0,8)}.json"`);
-    res.json(structured);
-});
-
-// PDF export
-app.get('/api/debate/:id/export/pdf', (req, res) => {
-    const debate = getDebate(req.params.id);
-    if (!debate) return res.status(404).json({ error: 'Debate not found' });
-    try {
-        const doc = generateDebatePDF(debate);
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="dissensus-${req.params.id.substring(0,8)}.pdf"`);
-        doc.pipe(res);
-        doc.end();
-    } catch (err) {
-        console.error('PDF generation error:', err);
-        res.status(500).json({ error: 'Failed to generate PDF' });
-    }
-});
-
-app.get('/api/debates/recent', (req, res) => {
-    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
-    res.json(listRecent(limit));
-});
-
 // ----------------------------------------------------------
 // Start Debate — SSE Streaming Endpoint
 // ----------------------------------------------------------
@@ -425,6 +388,43 @@ app.get('/api/debate/stream', debateLimiter, optionalAuth, async (req, res) => {
       res.end();
     }
   }
+});
+
+app.get('/api/debates/recent', (req, res) => {
+    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    res.json(listRecent(limit));
+});
+
+// ── Debate Persistence Endpoints ──────────────────────────────
+app.get('/api/debate/:id', (req, res) => {
+    const debate = getDebate(req.params.id);
+    if (!debate) return res.status(404).json({ error: 'Debate not found' });
+    res.json(debate);
+});
+
+// Structured JSON export
+app.get('/api/debate/:id/export/json', (req, res) => {
+    const debate = getDebate(req.params.id);
+    if (!debate) return res.status(404).json({ error: 'Debate not found' });
+    const structured = formatDebateJSON(debate);
+    res.setHeader('Content-Disposition', `attachment; filename="dissensus-${req.params.id.substring(0,8)}.json"`);
+    res.json(structured);
+});
+
+// PDF export
+app.get('/api/debate/:id/export/pdf', (req, res) => {
+    const debate = getDebate(req.params.id);
+    if (!debate) return res.status(404).json({ error: 'Debate not found' });
+    try {
+        const doc = generateDebatePDF(debate);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="dissensus-${req.params.id.substring(0,8)}.pdf"`);
+        doc.pipe(res);
+        doc.end();
+    } catch (err) {
+        console.error('PDF generation error:', err);
+        res.status(500).json({ error: 'Failed to generate PDF' });
+    }
 });
 
 // ----------------------------------------------------------
