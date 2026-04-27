@@ -11,9 +11,17 @@
 - [package.json](file://dissensus-engine/package.json)
 - [index.html](file://dissensus-engine/public/index.html)
 - [test-api.html](file://dissensus-engine/public/test-api.html)
-- [server.py](file://forum/server.py)
-- [engine.js](file://forum/engine.js)
+- [VPS-DEPLOY.md](file://VPS-DEPLOY.md)
+- [DEPLOY-VPS.md](file://dissensus-engine/docs/DEPLOY-VPS.md)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Removed all references to Python forum backend and `/api/discuss` endpoint
+- Consolidated documentation to focus on the current Node.js debate engine architecture
+- Updated deployment guidance to reflect single VPS approach
+- Revised API endpoints to match the actual Node.js implementation
+- Updated architecture diagrams to reflect the current system design
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -28,28 +36,23 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document provides comprehensive API documentation for the research discussion endpoints. It focuses on:
-- POST /api/discuss: Processes research queries, performs topic analysis, executes web searches, and generates multi-agent responses.
-- GET /api/health: Service health monitoring endpoint.
-It also covers request/response schemas, parameter validation, error handling, rate limiting, CORS/static file serving, deployment considerations, integration guidelines, troubleshooting, and performance optimization tips.
+This document provides comprehensive API documentation for the research discussion endpoints powered by the Node.js debate engine. It focuses on:
+- POST /api/debate/validate: Validates debate parameters and checks API key availability
+- GET /api/debate/stream: Streams multi-agent debate responses in real-time via Server-Sent Events
+- GET /api/health: Service health monitoring endpoint
+- GET /api/providers: Returns available AI providers and models
+- GET /api/config: Returns server configuration including available providers
+- POST /api/card: Generates shareable debate cards
+- GET /api/metrics: Public metrics and analytics
+- GET /api/debate-of-the-day: Returns trending debate topics
 
-Note: The repository contains two related but separate systems:
-- A Node.js debate engine exposing streaming debate endpoints and metrics.
-- A Python forum backend implementing the POST /api/discuss endpoint described in this document.
-
-This document consolidates both systems to provide a unified view of the research discussion APIs.
+The system implements a sophisticated 4-phase dialectical debate process with three AI agents (CIPHER, NOVA, PRISM) and provides comprehensive streaming capabilities for real-time debate experiences.
 
 ## Project Structure
-The research discussion APIs span two primary systems:
-- Node.js debate engine (streaming debate, metrics, cards)
-- Python forum backend (research-powered discussion)
+The research discussion APIs are implemented entirely within the Node.js debate engine:
 
 ```mermaid
 graph TB
-subgraph "Python Forum Backend"
-PY_API["/api/discuss<br/>POST"]
-PY_HEALTH["/api/health<br/>GET"]
-end
 subgraph "Node.js Debate Engine"
 NODE_INDEX["Express Server<br/>index.js"]
 NODE_DEBATE["Debate Engine<br/>debate-engine.js"]
@@ -57,159 +60,146 @@ NODE_AGENTS["Agent Definitions<br/>agents.js"]
 NODE_METRICS["Metrics<br/>metrics.js"]
 NODE_CARD["Card Generator<br/>card-generator.js"]
 NODE_DOTD["Debate of the Day<br/>debate-of-the-day.js"]
+ENDPOINTS["API Endpoints<br/>/api/*"]
+STATIC["Static Assets<br/>public/*"]
 end
-PY_API --> NODE_INDEX
-PY_HEALTH --> NODE_INDEX
 NODE_INDEX --> NODE_DEBATE
 NODE_DEBATE --> NODE_AGENTS
 NODE_INDEX --> NODE_METRICS
 NODE_INDEX --> NODE_CARD
 NODE_INDEX --> NODE_DOTD
+NODE_INDEX --> ENDPOINTS
+NODE_INDEX --> STATIC
 ```
 
 **Diagram sources**
-- [index.js:1-356](file://dissensus-engine/server/index.js#L1-L356)
-- [debate-engine.js:1-389](file://dissensus-engine/server/debate-engine.js#L1-L389)
+- [index.js:1-382](file://dissensus-engine/server/index.js#L1-L382)
+- [debate-engine.js:1-399](file://dissensus-engine/server/debate-engine.js#L1-L399)
 - [agents.js:1-148](file://dissensus-engine/server/agents.js#L1-L148)
 - [metrics.js:1-112](file://dissensus-engine/server/metrics.js#L1-L112)
 - [card-generator.js:1-361](file://dissensus-engine/server/card-generator.js#L1-L361)
 - [debate-of-the-day.js:1-80](file://dissensus-engine/server/debate-of-the-day.js#L1-L80)
-- [server.py:445-495](file://forum/server.py#L445-L495)
 
 **Section sources**
-- [index.js:1-356](file://dissensus-engine/server/index.js#L1-L356)
-- [debate-engine.js:1-389](file://dissensus-engine/server/debate-engine.js#L1-L389)
+- [index.js:1-382](file://dissensus-engine/server/index.js#L1-L382)
+- [debate-engine.js:1-399](file://dissensus-engine/server/debate-engine.js#L1-L399)
 - [agents.js:1-148](file://dissensus-engine/server/agents.js#L1-L148)
 - [metrics.js:1-112](file://dissensus-engine/server/metrics.js#L1-L112)
 - [card-generator.js:1-361](file://dissensus-engine/server/card-generator.js#L1-L361)
 - [debate-of-the-day.js:1-80](file://dissensus-engine/server/debate-of-the-day.js#L1-L80)
-- [server.py:445-495](file://forum/server.py#L445-L495)
 
 ## Core Components
-- Python Forum Backend (/api/discuss, /api/health)
-  - Implements POST /api/discuss that orchestrates topic analysis, web research, and multi-agent synthesis.
-  - Implements GET /api/health for service monitoring.
-- Node.js Debate Engine (complementary endpoints)
-  - Provides streaming debate via Server-Sent Events, metrics, and shareable cards.
-  - Useful for understanding agent orchestration and error handling patterns.
+- **Debate Engine**: Orchestrates the 4-phase dialectical process with three specialized AI agents
+- **Agent System**: Three distinct AI personalities (CIPHER, NOVA, PRISM) with different reasoning styles
+- **Streaming Architecture**: Real-time Server-Sent Events for live debate experiences
+- **Metrics System**: Comprehensive analytics and usage tracking
+- **Card Generation**: Twitter-optimized shareable debate cards
+- **Debate of the Day**: Trend-based topic suggestions from CoinGecko
 
 Key integration points:
-- The Python backend calls the Node.js debate engine for streaming debate experiences (when integrated).
-- Static assets and diagnostics are served by the Node.js server for testing and development.
+- Real-time streaming via Server-Sent Events
+- Multi-provider AI support (OpenAI, DeepSeek, Google Gemini)
+- Rate limiting and security middleware
+- Static asset serving for frontend integration
 
 **Section sources**
-- [server.py:445-495](file://forum/server.py#L445-L495)
-- [index.js:74-80](file://dissensus-engine/server/index.js#L74-L80)
-- [index.html:1-187](file://dissensus-engine/public/index.html#L1-L187)
-- [test-api.html:1-51](file://dissensus-engine/public/test-api.html#L1-L51)
+- [debate-engine.js:41-399](file://dissensus-engine/server/debate-engine.js#L41-L399)
+- [agents.js:8-148](file://dissensus-engine/server/agents.js#L8-L148)
+- [index.js:58-382](file://dissensus-engine/server/index.js#L58-L382)
 
 ## Architecture Overview
-The research discussion pipeline integrates a Python backend with a Node.js debate engine:
-- Client calls POST /api/discuss with a topic.
-- Python backend performs topic analysis, web research, and builds a research summary.
-- Python backend generates opening statements, cross-examination, rebuttals, and synthesis using three agents.
-- Optional integration with Node.js debate engine for streaming debate experiences.
-- GET /api/health provides service availability.
+The debate engine implements a sophisticated 4-phase dialectical process with real-time streaming:
 
 ```mermaid
 sequenceDiagram
 participant Client as "Client"
-participant PyAPI as "Python /api/discuss"
-participant Web as "Web Search"
-participant Agents as "Multi-Agent Synthesis"
-Client->>PyAPI : POST /api/discuss {topic}
-PyAPI->>PyAPI : analyze_topic(topic)
-PyAPI->>Web : research_topic(topic)
-Web-->>PyAPI : research_text
-PyAPI->>PyAPI : build_research_summary(research_text)
-PyAPI->>Agents : generate opening statements
-Agents-->>PyAPI : opening statements
-PyAPI->>Agents : generate cross-examination
-Agents-->>PyAPI : cross-examination
-PyAPI->>Agents : generate rebuttals
-Agents-->>PyAPI : rebuttals
-PyAPI->>Agents : generate consensus + disagreements
-Agents-->>PyAPI : synthesis
-PyAPI-->>Client : JSON response with research_facts, statements, and synthesis
+participant API as "API Layer"
+participant Engine as "Debate Engine"
+participant Agents as "AI Agents"
+participant Providers as "AI Providers"
+Client->>API : POST /api/debate/validate
+API->>API : validateTopic + model
+API->>Providers : check API keys
+API-->>Client : {ok : true}
+Client->>API : GET /api/debate/stream?topic=...
+API->>Engine : runDebate(topic)
+Engine->>Agents : Phase 1 : Independent Analysis
+Agents-->>Engine : Parallel agent responses
+Engine->>Agents : Phase 2 : Opening Arguments
+Agents-->>Engine : Formal positions
+Engine->>Agents : Phase 3 : Cross-Examination
+Agents-->>Engine : Challenges and counter-arguments
+Engine->>Agents : Phase 4 : Final Verdict
+Agents-->>Engine : Synthesis and conclusions
+Engine->>API : Stream events via SSE
+API-->>Client : Real-time debate stream
 ```
 
 **Diagram sources**
-- [server.py:445-495](file://forum/server.py#L445-L495)
+- [index.js:183-256](file://dissensus-engine/server/index.js#L183-L256)
+- [debate-engine.js:131-396](file://dissensus-engine/server/debate-engine.js#L131-L396)
 
 ## Detailed Component Analysis
 
-### POST /api/discuss
+### POST /api/debate/validate
 Purpose:
-- Accepts a research topic, performs topic analysis and web research, and returns a structured multi-agent response.
+- Validates debate parameters before initiating a debate
+- Checks topic sanitization, model availability, and API key configuration
 
 Request Schema
 - Content-Type: application/json
 - Body:
-  - topic: string (required). Trimmed and validated for presence and length.
+  - topic: string (required). Must be 3-500 characters after sanitization
+  - provider: string (optional). Defaults to 'deepseek'
+  - model: string (optional). Auto-selected based on provider
 
 Response Schema
 - Success (200):
-  - topic: string
-  - research_facts: array of strings (first 10 items)
-  - openingStatements: object
-    - cipher: string
-    - nova: string
-    - prism: string
-  - crossExamination: string
-  - rebuttals: string
-  - synthesis: object
-    - consensus: string
-    - disagreements: string
+  - ok: boolean (true)
 - Client Error (400):
-  - error: string
-- Server Error (500):
-  - error: string
+  - error: string (validation failure message)
 
 Processing Logic
-- Validates topic presence and length.
-- Performs topic analysis and web research.
-- Builds a research summary (first 10 facts).
-- Generates opening statements for each agent.
-- Generates cross-examination and rebuttals.
-- Produces synthesis with consensus and disagreements.
-
-Error Handling
-- Returns 400 with error message if topic is missing or invalid.
-- Returns 500 with error message on internal failures.
-
-Rate Limiting
-- Not implemented in the Python backend. Consider applying rate limiting at the application or reverse proxy level.
-
-Validation Rules
-- topic must be present and non-empty.
-- Maximum topic length enforced by the Python backend.
-
-Integration Notes
-- The frontend calls this endpoint and renders the results in a discussion area.
-- The Node.js debate engine provides streaming debate experiences that complement this research-focused endpoint.
+- Sanitizes and validates topic length and content
+- Validates provider and model combinations
+- Checks for server-side API key configuration
+- Returns immediate validation result
 
 **Section sources**
-- [server.py:445-495](file://forum/server.py#L445-L495)
-- [engine.js:30-80](file://forum/engine.js#L30-L80)
+- [index.js:142-166](file://dissensus-engine/server/index.js#L142-L166)
+
+### GET /api/debate/stream
+Purpose:
+- Streams a complete 4-phase debate in real-time via Server-Sent Events
+- Implements the full dialectical process with three AI agents
+
+Request Parameters
+- topic: string (required). Debate topic to analyze
+- provider: string (optional). AI provider ('deepseek', 'openai', 'gemini')
+- model: string (optional). Specific model identifier
+
+Response Format
+- Server-Sent Events with structured JSON payloads
+- Event types: 'debate-start', 'phase-start', 'agent-start', 'agent-chunk', 'agent-done', 'phase-done', 'debate-done'
+
+Processing Phases
+1. **Phase 1: Independent Analysis** - All agents analyze topic separately
+2. **Phase 2: Opening Arguments** - Formal positions presented
+3. **Phase 3: Cross-Examination** - Agents challenge each other
+4. **Phase 4: Final Verdict** - PRISM synthesizes conclusions
+
+Error Handling
+- Returns 400 for validation failures
+- Streams error events via SSE for runtime failures
+- Graceful degradation with error messages
+
+**Section sources**
+- [index.js:183-256](file://dissensus-engine/server/index.js#L183-L256)
+- [debate-engine.js:131-396](file://dissensus-engine/server/debate-engine.js#L131-L396)
 
 ### GET /api/health
 Purpose:
-- Monitors service health and readiness.
-
-Response Schema
-- 200 OK:
-  - status: string ("ok")
-- Other status codes indicate service issues.
-
-Operational Notes
-- Used by monitoring systems and load balancers to determine service health.
-
-**Section sources**
-- [server.py:486-488](file://forum/server.py#L486-L488)
-
-### GET /api/health (Node.js Debate Engine)
-Purpose:
-- Additional health endpoint for the Node.js debate engine.
+- Monitors service health and provider availability
 
 Response Schema
 - 200 OK:
@@ -217,99 +207,199 @@ Response Schema
   - service: string ("dissensus-engine")
   - providers: string (comma-separated provider list)
 
+Operational Notes
+- Used by monitoring systems and load balancers
+- Indicates server readiness and provider configuration
+
 **Section sources**
-- [index.js:74-80](file://dissensus-engine/server/index.js#L74-L80)
+- [index.js:93-99](file://dissensus-engine/server/index.js#L93-L99)
+
+### GET /api/providers
+Purpose:
+- Returns available AI providers and their supported models
+
+Response Schema
+- 200 OK:
+  - provider: object containing hasServerKey and model details
+  - Models include cost information and capabilities
+
+**Section sources**
+- [index.js:104-118](file://dissensus-engine/server/index.js#L104-L118)
+
+### GET /api/config
+Purpose:
+- Returns server configuration including available providers and limits
+
+Response Schema
+- 200 OK:
+  - availableProviders: array of configured providers
+  - maxTopicLength: number (500)
+
+**Section sources**
+- [index.js:77-86](file://dissensus-engine/server/index.js#L77-L86)
+
+### POST /api/card
+Purpose:
+- Generates shareable debate cards in PNG format for social media
+
+Request Schema
+- Content-Type: application/json
+- Body:
+  - topic: string (required). Debate topic
+  - verdict: string (required). Debate conclusion
+
+Response Format
+- 200 OK: PNG image attachment
+- 400/500: Error response with message
+
+Processing Logic
+- Validates input parameters
+- Generates Twitter-optimized 1200×630 PNG
+- Includes crypto disclaimer for relevant topics
+- Summarizes long verdicts when server keys available
+
+**Section sources**
+- [index.js:283-317](file://dissensus-engine/server/index.js#L283-L317)
+- [card-generator.js:170-361](file://dissensus-engine/server/card-generator.js#L170-L361)
+
+### GET /api/metrics
+Purpose:
+- Provides public metrics and analytics for the debate engine
+
+Response Schema
+- 200 OK:
+  - totalDebates: number
+  - uniqueTopics: number
+  - debatesToday: number
+  - providerUsage: object
+  - uptimeSeconds: number
+  - uptimePercent: string
+  - debatesLastHour: number
+  - recentTopics: array
+
+**Section sources**
+- [index.js:330-342](file://dissensus-engine/server/index.js#L330-L342)
+- [metrics.js:77-100](file://dissensus-engine/server/metrics.js#L77-L100)
+
+### GET /api/debate-of-the-day
+Purpose:
+- Returns trending debate topics from CoinGecko or fallback suggestions
+
+Response Schema
+- 200 OK:
+  - topic: string (trending or fallback topic)
+
+**Section sources**
+- [index.js:261-270](file://dissensus-engine/server/index.js#L261-L270)
+- [debate-of-the-day.js:66-77](file://dissensus-engine/server/debate-of-the-day.js#L66-L77)
 
 ## Dependency Analysis
 External Dependencies and Integrations
-- Python Backend:
-  - Depends on web search and analysis functions (implemented in the backend).
-  - Integrates with the Node.js debate engine for streaming debate experiences (optional).
-- Node.js Debate Engine:
-  - Express server with Helmet for security headers.
-  - Rate limiting middleware for abuse prevention.
-  - SSE streaming for debate events.
-  - Metrics collection and card generation.
+- **AI Providers**: OpenAI, DeepSeek, Google Gemini with server-side API key management
+- **Streaming**: Server-Sent Events for real-time communication
+- **Image Generation**: Satori + Resvg for PNG card creation
+- **Static Assets**: Express static file serving for frontend integration
+- **Rate Limiting**: Express-rate-limit middleware for abuse prevention
 
 ```mermaid
 graph LR
-Client["Client"] --> PyAPI["Python /api/discuss"]
-Client --> NodeHealth["Node.js /api/health"]
-PyAPI --> WebSearch["Web Search"]
-PyAPI --> Agents["Multi-Agent Synthesis"]
-PyAPI --> NodeSSE["Node.js Debate SSE (optional)"]
-NodeSSE --> NodeServer["Node.js Server"]
+Client["Client"] --> API["API Layer"]
+API --> Engine["Debate Engine"]
+API --> Metrics["Metrics System"]
+API --> Cards["Card Generator"]
+Engine --> Agents["Agent System"]
+Engine --> Providers["AI Providers"]
+Cards --> Providers
+Metrics --> Storage["In-Memory Storage"]
 ```
 
 **Diagram sources**
-- [server.py:445-495](file://forum/server.py#L445-L495)
-- [index.js:74-80](file://dissensus-engine/server/index.js#L74-L80)
+- [index.js:1-382](file://dissensus-engine/server/index.js#L1-L382)
+- [debate-engine.js:14-39](file://dissensus-engine/server/debate-engine.js#L14-L39)
+- [card-generator.js:7-9](file://dissensus-engine/server/card-generator.js#L7-L9)
 
 **Section sources**
 - [package.json:10-25](file://dissensus-engine/package.json#L10-L25)
-- [index.js:39-44](file://dissensus-engine/server/index.js#L39-L44)
+- [index.js:30-35](file://dissensus-engine/server/index.js#L30-L35)
 
 ## Performance Considerations
-- Python Backend:
-  - Topic analysis and web research can be expensive; cache results where appropriate.
-  - Limit the number of research facts returned (already capped at 10).
-  - Consider pagination or streaming for very large research outputs.
-- Node.js Debate Engine:
-  - SSE streaming is efficient for real-time updates.
-  - Rate limiting prevents abuse; tune limits based on capacity.
-  - Consider connection pooling and timeouts for upstream AI providers.
-
-[No sources needed since this section provides general guidance]
+- **Streaming Optimization**: SSE streaming with minimal buffering for real-time experiences
+- **Rate Limiting**: Configurable limits for debates (10/min in production), cards (20/min), and metrics (120/min)
+- **Memory Management**: In-memory metrics with automatic cleanup and daily resets
+- **API Key Management**: Server-side API keys prevent client-side configuration and reduce overhead
+- **Image Generation**: Efficient PNG generation with font caching and optimized rendering
 
 ## Troubleshooting Guide
 Common Issues and Resolutions
-- Missing or invalid topic:
-  - Symptom: 400 error with an error message.
-  - Resolution: Ensure the topic is present and within allowed length.
-- Server errors during research:
-  - Symptom: 500 error with an error message.
-  - Resolution: Check backend logs, validate web search endpoints, and retry.
-- Streaming debate issues (Node.js):
-  - Symptom: SSE stream fails or disconnects.
-  - Resolution: Verify network connectivity, reverse proxy configuration, and client event handling.
-- Health check failures:
-  - Symptom: /api/health returns non-200 status.
-  - Resolution: Inspect service logs and dependencies.
+- **Validation Failures**:
+  - Symptom: 400 error from /api/debate/validate
+  - Resolution: Check topic length (3-500 chars), provider/model combinations, and API key configuration
+- **Streaming Issues**:
+  - Symptom: SSE stream disconnects or buffers
+  - Resolution: Verify Nginx configuration has `proxy_buffering off` for /api/debate/stream
+- **API Key Errors**:
+  - Symptom: "API key required" errors
+  - Resolution: Configure server-side API keys in .env file
+- **Rate Limiting**:
+  - Symptom: 429 Too Many Requests
+  - Resolution: Wait for rate limit reset or adjust limits in production
+- **Health Check Failures**:
+  - Symptom: /api/health returns non-200 status
+  - Resolution: Check service logs and provider connectivity
 
 **Section sources**
-- [server.py:454-483](file://forum/server.py#L454-L483)
-- [index.js:222-229](file://dissensus-engine/server/index.js#L222-L229)
+- [index.js:66-72](file://dissensus-engine/server/index.js#L66-L72)
+- [index.js:283-317](file://dissensus-engine/server/index.js#L283-L317)
 
 ## Conclusion
-The research discussion API provides a robust foundation for generating multi-agent, research-backed responses to user topics. The Python backend handles topic analysis and synthesis, while the Node.js debate engine offers complementary streaming and metrics capabilities. Proper validation, error handling, and rate limiting ensure reliability, and the included health endpoints support operational monitoring.
-
-[No sources needed since this section summarizes without analyzing specific files]
+The Node.js debate engine provides a comprehensive, production-ready solution for multi-agent AI debates with real-time streaming capabilities. The system implements sophisticated agent personalities, robust streaming architecture, and comprehensive analytics. Proper configuration of API keys, rate limiting, and deployment ensures reliable operation for real-time debate experiences.
 
 ## Appendices
 
 ### API Usage Examples
-- POST /api/discuss
-  - Request: { "topic": "Should AI be regulated by governments?" }
-  - Response: Includes research_facts, opening statements, cross-examination, rebuttals, and synthesis.
-- GET /api/health
-  - Request: None
-  - Response: { "status": "ok" }
+- **Parameter Validation**:
+  ```javascript
+  // POST /api/debate/validate
+  const response = await fetch('/api/debate/validate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      topic: 'Should AI be regulated by governments?',
+      provider: 'deepseek',
+      model: 'deepseek-chat'
+    })
+  });
+  ```
+- **Real-time Debate Streaming**:
+  ```javascript
+  // GET /api/debate/stream
+  const eventSource = new EventSource('/api/debate/stream?topic=AI+regulation&provider=deepseek');
+  eventSource.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    console.log('Event:', data.type, data);
+  };
+  ```
+- **Health Check**:
+  ```javascript
+  // GET /api/health
+  const health = await fetch('/api/health');
+  const status = await health.json();
+  ```
 
-Integration Guidelines
-- Frontend: Call /api/discuss and render the returned sections.
-- Monitoring: Poll /api/health periodically.
-- Optional: Integrate with Node.js debate engine for streaming debate experiences.
+### Integration Guidelines
+- **Frontend Integration**: Use EventSource for real-time streaming, fetch for validation and metadata
+- **Monitoring**: Poll /api/health and /api/metrics for operational visibility
+- **Deployment**: Use PM2 or systemd for process management with proper environment configuration
+- **CORS**: Configure at reverse proxy level (Nginx) for cross-origin requests
 
-CORS and Static File Serving
-- The Node.js server serves static files from the public directory and includes basic security headers.
-- For cross-origin requests, configure CORS at the reverse proxy or application level as needed.
-
-Deployment Considerations
-- Scale horizontally to handle research-heavy loads.
-- Use caching for repeated topics and research summaries.
-- Monitor resource usage and adjust rate limits accordingly.
+### Deployment Considerations
+- **Single VPS Approach**: Complete system runs on one VPS with Nginx as reverse proxy
+- **Process Management**: PM2 or systemd for automatic restarts and monitoring
+- **SSL Configuration**: Let's Encrypt certificates via Certbot for HTTPS
+- **Static Asset Serving**: Nginx serves public assets directly for optimal performance
+- **Reverse Proxy**: Critical SSE streaming requires `proxy_buffering off` configuration
 
 **Section sources**
-- [index.html:1-187](file://dissensus-engine/public/index.html#L1-L187)
-- [test-api.html:1-51](file://dissensus-engine/public/test-api.html#L1-L51)
-- [index.js:43-44](file://dissensus-engine/server/index.js#L43-L44)
+- [VPS-DEPLOY.md:1-41](file://VPS-DEPLOY.md#L1-L41)
+- [DEPLOY-VPS.md:272-383](file://dissensus-engine/docs/DEPLOY-VPS.md#L272-L383)
+- [index.js:358-382](file://dissensus-engine/server/index.js#L358-L382)

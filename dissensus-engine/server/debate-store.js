@@ -24,6 +24,8 @@ function saveDebate(debateData) {
         topic: debateData.topic,
         provider: debateData.provider,
         model: debateData.model,
+        userId: debateData.userId || null,
+        workspaceId: debateData.workspaceId || null,
         timestamp: debateData.timestamp || new Date().toISOString(),
         phases: debateData.phases || []
     };
@@ -67,6 +69,8 @@ function listRecent(limit = 20) {
                     id: data.id,
                     topic: (data.topic || '').substring(0, 100),
                     provider: data.provider,
+                    userId: data.userId || null,
+                    workspaceId: data.workspaceId || null,
                     timestamp: data.timestamp || stat.mtime.toISOString()
                 };
             } catch {

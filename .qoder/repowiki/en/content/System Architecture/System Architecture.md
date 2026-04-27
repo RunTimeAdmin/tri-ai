@@ -8,21 +8,21 @@
 - [dissensus-engine/server/index.js](file://dissensus-engine/server/index.js)
 - [dissensus-engine/server/debate-engine.js](file://dissensus-engine/server/debate-engine.js)
 - [dissensus-engine/server/metrics.js](file://dissensus-engine/server/metrics.js)
+- [dissensus-engine/server/card-generator.js](file://dissensus-engine/server/card-generator.js)
+- [dissensus-engine/server/agents.js](file://dissensus-engine/server/agents.js)
 - [dissensus-engine/public/index.html](file://dissensus-engine/public/index.html)
 - [dissensus-engine/public/js/app.js](file://dissensus-engine/public/js/app.js)
 - [dissensus-engine/docs/DEPLOY-VPS.md](file://dissensus-engine/docs/DEPLOY-VPS.md)
-- [forum/server.py](file://forum/server.py)
-- [forum/engine.js](file://forum/engine.js)
 - [diss-launch-kit/website/index.html](file://diss-launch-kit/website/index.html)
 </cite>
 
 ## Update Summary
 **Changes Made**
-- Removed Solana blockchain integration and staking functionality from all components
-- Updated Express.js server architecture to remove staking endpoints and Solana balance queries
+- Removed references to legacy forum system and Python backend components
+- Updated deployment topology to reflect current single-node VPS approach with Node.js-only architecture
+- Simplified architecture to focus on core AI debate engine without blockchain integration
+- Updated system context diagrams to reflect streamlined Node.js-only deployment
 - Removed staking-related dependencies and configurations from package.json
-- Updated frontend UI to remove wallet integration and staking controls
-- Revised system context diagrams to reflect simplified architecture without blockchain features
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -37,18 +37,18 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document describes the Dissensus system architecture, focusing on the AI debate engine, research platform, and frontend applications. The system follows a microservices-style composition:
+This document describes the Dissensus system architecture, focusing on the AI debate engine and frontend applications. The system follows a modern Node.js architecture with a microservices-style composition:
 - Express.js server layer with Server-Sent Events (SSE) for real-time debate streaming
-- Python-based research engine for web research and structured debate synthesis
+- AI debate orchestration with three specialized agent personalities
 - Frontend applications for user interaction and content presentation
+- Single-node VPS deployment with Nginx reverse proxy and SSL termination
 
-The architecture emphasizes modularity, scalability, and clear separation of concerns across the AI debate orchestration, research synthesis, and user interface layers. The system has been simplified to focus on core debate functionality without blockchain integration or staking mechanisms.
+The architecture emphasizes modularity, scalability, and clear separation of concerns across the AI debate orchestration, real-time streaming, and user interface layers. The system has been streamlined to focus on core debate functionality without legacy components.
 
 ## Project Structure
 The repository organizes functionality into distinct modules:
 - dissensus-engine: Express.js server, debate orchestration, SSE streaming, metrics, and frontend assets
-- forum: Python Flask-based research engine and UI for structured debate synthesis
-- diss-launch-kit: Landing page website for brand and token information
+- diss-launch-kit: Landing page website for brand and marketing information
 - Root-level documentation and deployment guides
 
 ```mermaid
@@ -57,11 +57,9 @@ subgraph "dissensus-engine"
 A_index["server/index.js"]
 A_debate["server/debate-engine.js"]
 A_metrics["server/metrics.js"]
+A_card["server/card-generator.js"]
+A_agents["server/agents.js"]
 A_ui["public/index.html + js/app.js"]
-end
-subgraph "forum"
-F_server["server.py"]
-F_engine["engine.js"]
 end
 subgraph "diss-launch-kit"
 L_index["website/index.html"]
@@ -70,19 +68,19 @@ Internet["Internet Users"] --> A_ui
 A_ui --> A_index
 A_index --> A_debate
 A_index --> A_metrics
-A_ui --> F_engine
-F_engine --> F_server
+A_index --> A_card
+A_debate --> A_agents
 L_index --> A_ui
 ```
 
 **Diagram sources**
-- [dissensus-engine/server/index.js:1-356](file://dissensus-engine/server/index.js#L1-L356)
+- [dissensus-engine/server/index.js:1-382](file://dissensus-engine/server/index.js#L1-L382)
 - [dissensus-engine/server/debate-engine.js:1-399](file://dissensus-engine/server/debate-engine.js#L1-L399)
 - [dissensus-engine/server/metrics.js:1-112](file://dissensus-engine/server/metrics.js#L1-L112)
-- [dissensus-engine/public/index.html:1-217](file://dissensus-engine/public/index.html#L1-L217)
-- [dissensus-engine/public/js/app.js:1-554](file://dissensus-engine/public/js/app.js#L1-L554)
-- [forum/server.py:1-495](file://forum/server.py#L1-L495)
-- [forum/engine.js:1-323](file://forum/engine.js#L1-L323)
+- [dissensus-engine/server/card-generator.js:1-361](file://dissensus-engine/server/card-generator.js#L1-L361)
+- [dissensus-engine/server/agents.js:1-148](file://dissensus-engine/server/agents.js#L1-L148)
+- [dissensus-engine/public/index.html:1-183](file://dissensus-engine/public/index.html#L1-L183)
+- [dissensus-engine/public/js/app.js:1-620](file://dissensus-engine/public/js/app.js#L1-L620)
 - [diss-launch-kit/website/index.html:1-451](file://diss-launch-kit/website/index.html#L1-L451)
 
 **Section sources**
@@ -92,41 +90,44 @@ L_index --> A_ui
 ## Core Components
 - Express.js Server (dissensus-engine/server/index.js)
   - Provides SSE streaming endpoint for real-time debate events
-  - Exposes APIs for provider configuration, debate validation, metrics, and debate of the day
+  - Exposes APIs for provider configuration, debate validation, metrics, and debate persistence
   - Implements rate limiting, security headers, and graceful shutdown
 - Debate Engine (dissensus-engine/server/debate-engine.js)
-  - Orchestrates a 4-phase dialectical process across three AI agents
+  - Orchestrates a 4-phase dialectical process across three AI agents (CIPHER, NOVA, PRISM)
   - Integrates with OpenAI, DeepSeek, and Google Gemini providers
   - Streams incremental agent outputs via SSE
 - Metrics (dissensus-engine/server/metrics.js)
   - Tracks in-memory statistics for transparency dashboard
   - Aggregates provider usage, debates, and performance metrics
+- Card Generator (dissensus-engine/server/card-generator.js)
+  - Generates shareable PNG cards for Twitter/X with debate outcomes
+  - Includes optional LLM summarization for long verdicts
+- Agents (dissensus-engine/server/agents.js)
+  - Defines personality profiles and system prompts for each AI agent
+  - Provides distinct reasoning styles and roles in the debate process
 - Frontend (dissensus-engine/public)
   - React-like UI rendering with markdown rendering and SSE consumption
   - Provider/model selection and debate card generation
-- Research Platform (forum/server.py, forum/engine.js)
-  - Python-based web research and structured debate synthesis
-  - Flask API for topic analysis, research gathering, and agent-generated content
 - Landing Page (diss-launch-kit/website/index.html)
-  - Marketing and token information site with navigation to the debate app
+  - Marketing and informational site with navigation to the debate app
 
 **Section sources**
-- [dissensus-engine/server/index.js:1-356](file://dissensus-engine/server/index.js#L1-L356)
+- [dissensus-engine/server/index.js:1-382](file://dissensus-engine/server/index.js#L1-L382)
 - [dissensus-engine/server/debate-engine.js:1-399](file://dissensus-engine/server/debate-engine.js#L1-L399)
 - [dissensus-engine/server/metrics.js:1-112](file://dissensus-engine/server/metrics.js#L1-L112)
-- [dissensus-engine/public/index.html:1-217](file://dissensus-engine/public/index.html#L1-L217)
-- [dissensus-engine/public/js/app.js:1-554](file://dissensus-engine/public/js/app.js#L1-L554)
-- [forum/server.py:1-495](file://forum/server.py#L1-L495)
-- [forum/engine.js:1-323](file://forum/engine.js#L1-L323)
+- [dissensus-engine/server/card-generator.js:1-361](file://dissensus-engine/server/card-generator.js#L1-L361)
+- [dissensus-engine/server/agents.js:1-148](file://dissensus-engine/server/agents.js#L1-L148)
+- [dissensus-engine/public/index.html:1-183](file://dissensus-engine/public/index.html#L1-L183)
+- [dissensus-engine/public/js/app.js:1-620](file://dissensus-engine/public/js/app.js#L1-L620)
 - [diss-launch-kit/website/index.html:1-451](file://diss-launch-kit/website/index.html#L1-L451)
 
 ## Architecture Overview
-The system employs a layered architecture:
+The system employs a modern layered architecture:
 - Presentation Layer: Frontend apps (debate UI and landing page)
 - API Layer: Express.js server handling SSE, validation, and integrations
 - Orchestration Layer: Debate engine coordinating multi-agent AI workflows
-- Integration Layer: AI providers and research synthesis
-- Persistence Layer: In-memory metrics (planned persistence for production)
+- Integration Layer: AI providers (OpenAI, DeepSeek, Gemini)
+- Persistence Layer: In-memory metrics and debate storage
 
 ```mermaid
 graph TB
@@ -135,58 +136,64 @@ FE_UI --> API["Express API (server/index.js)"]
 API --> SSE["SSE Streaming"]
 API --> ORCH["Debate Engine (debate-engine.js)"]
 API --> METRICS["Metrics (metrics.js)"]
+API --> CARD["Card Generator (card-generator.js)"]
+ORCH --> AGENTS["Agents (agents.js)"]
 ORCH --> AI_Providers["AI Providers (OpenAI, DeepSeek, Gemini)"]
-FE_UI --> RESEARCH["Research Platform (forum/server.py)"]
-RESEARCH --> RESEARCH_UI["Forum UI (forum/engine.js)"]
+FE_UI --> LANDING["Landing Page (diss-launch-kit)"]
 ```
 
 **Diagram sources**
-- [dissensus-engine/server/index.js:1-356](file://dissensus-engine/server/index.js#L1-L356)
+- [dissensus-engine/server/index.js:1-382](file://dissensus-engine/server/index.js#L1-L382)
 - [dissensus-engine/server/debate-engine.js:1-399](file://dissensus-engine/server/debate-engine.js#L1-L399)
 - [dissensus-engine/server/metrics.js:1-112](file://dissensus-engine/server/metrics.js#L1-L112)
-- [forum/server.py:1-495](file://forum/server.py#L1-L495)
-- [forum/engine.js:1-323](file://forum/engine.js#L1-L323)
+- [dissensus-engine/server/card-generator.js:1-361](file://dissensus-engine/server/card-generator.js#L1-L361)
+- [dissensus-engine/server/agents.js:1-148](file://dissensus-engine/server/agents.js#L1-L148)
 
 ## Detailed Component Analysis
 
 ### Express.js Server Layer
 The Express server provides:
 - SSE endpoint for real-time debate streaming
-- Validation and rate-limited endpoints for providers, metrics, and debate of the day
+- Validation and rate-limited endpoints for providers, metrics, and debate persistence
 - Health checks and configuration exposure
 - Security middleware and graceful shutdown
+- Debate persistence with ID-based retrieval
 
 ```mermaid
 sequenceDiagram
 participant Client as "Frontend App"
 participant API as "Express Server"
 participant Engine as "DebateEngine"
-participant AI as "AI Provider"
+participant Agents as "Agent System"
+participant Providers as "AI Providers"
 Client->>API : POST /api/debate/validate
 API-->>Client : { ok } or error
-Client->>API : GET /api/debate/stream?topic&provider&model&apiKey
+Client->>API : GET /api/debate/stream?topic&provider&model
 API->>API : Apply rate limits
 API->>Engine : new DebateEngine(key, provider, model)
-Engine->>AI : Streamed chat completions
-AI-->>Engine : Incremental chunks
+Engine->>Agents : Initialize agents
+Agents->>Providers : Streamed chat completions
+Providers-->>Agents : Incremental chunks
+Agents-->>Engine : Structured events
 Engine-->>API : Events {phase-start, agent-chunk, agent-done, ...}
 API-->>Client : SSE data stream
-API-->>Client : [DONE] when finished
+API-->>Client : [DONE] with debateId when finished
 ```
 
 **Diagram sources**
-- [dissensus-engine/server/index.js:156-230](file://dissensus-engine/server/index.js#L156-L230)
+- [dissensus-engine/server/index.js:183-256](file://dissensus-engine/server/index.js#L183-L256)
 - [dissensus-engine/server/debate-engine.js:131-396](file://dissensus-engine/server/debate-engine.js#L131-L396)
 
 **Section sources**
-- [dissensus-engine/server/index.js:26-356](file://dissensus-engine/server/index.js#L26-L356)
-- [dissensus-engine/package.json:1-28](file://dissensus-engine/package.json#L1-L28)
+- [dissensus-engine/server/index.js:26-382](file://dissensus-engine/server/index.js#L26-L382)
+- [dissensus-engine/package.json:1-26](file://dissensus-engine/package.json#L1-L26)
 
 ### Real-Time Streaming Architecture (SSE)
 The SSE implementation streams structured debate events:
 - Headers configured to disable buffering and maintain streaming
 - Client consumes via fetch with manual parsing of data blocks
-- Events include phase transitions, agent turns, and final verdict
+- Events include phase transitions, agent turns, and final verdict with debate ID
+- Automatic cleanup and graceful error handling
 
 ```mermaid
 flowchart TD
@@ -194,18 +201,20 @@ Start(["Client connects to /api/debate/stream"]) --> Validate["Validate inputs a
 Validate --> |Valid| Init["Initialize DebateEngine with provider/model/key"]
 Validate --> |Invalid| Error["Return error to client"]
 Init --> Stream["Stream incremental chunks via SSE"]
-Stream --> Render["Frontend renders markdown and updates UI"]
+Stream --> Parse["Parse data blocks and handle events"]
+Parse --> Render["Frontend renders markdown and updates UI"]
 Render --> Done{"[DONE] received?"}
 Done --> |No| Stream
 Done --> |Yes| Finish["Close connection and finalize metrics"]
+Finish --> Persist["Save debate with ID for later retrieval"]
 ```
 
 **Diagram sources**
-- [dissensus-engine/server/index.js:156-230](file://dissensus-engine/server/index.js#L156-L230)
+- [dissensus-engine/server/index.js:183-256](file://dissensus-engine/server/index.js#L183-L256)
 - [dissensus-engine/public/js/app.js:286-341](file://dissensus-engine/public/js/app.js#L286-L341)
 
 **Section sources**
-- [dissensus-engine/server/index.js:192-230](file://dissensus-engine/server/index.js#L192-L230)
+- [dissensus-engine/server/index.js:212-256](file://dissensus-engine/server/index.js#L212-L256)
 - [dissensus-engine/public/js/app.js:342-427](file://dissensus-engine/public/js/app.js#L342-L427)
 
 ### AI Providers Integration
@@ -232,52 +241,84 @@ DebateEngine --> Providers : "uses"
 ```
 
 **Diagram sources**
-- [dissensus-engine/server/debate-engine.js:41-53](file://dissensus-engine/server/debate-engine.js#L41-L53)
 - [dissensus-engine/server/debate-engine.js:14-39](file://dissensus-engine/server/debate-engine.js#L14-L39)
+- [dissensus-engine/server/debate-engine.js:41-53](file://dissensus-engine/server/debate-engine.js#L41-L53)
 
 **Section sources**
 - [dissensus-engine/server/debate-engine.js:14-39](file://dissensus-engine/server/debate-engine.js#L14-L39)
 - [dissensus-engine/server/debate-engine.js:58-116](file://dissensus-engine/server/debate-engine.js#L58-L116)
 
-### Python-Based Research Engine
-The research platform performs:
-- Web search via DuckDuckGo HTML scraping
-- Topic analysis and domain classification
-- Agent-generated content synthesis (opening statements, cross-examination, rebuttals, consensus)
-- Flask API serving both static assets and backend endpoints
+### Agent System Architecture
+The system defines three distinct agent personalities with specialized reasoning approaches:
+- CIPHER: The Skeptic - adversarial red-team auditor
+- NOVA: The Advocate - blue-sky opportunity finder  
+- PRISM: The Synthesizer - neutral analyst and referee
+
+Each agent has unique system prompts, reasoning styles, and roles in the 4-phase debate process.
 
 ```mermaid
-sequenceDiagram
-participant UI as "Forum UI"
-participant API as "Flask API (server.py)"
-participant Search as "Web Search"
-participant Analyzer as "Topic Analyzer"
-participant Generator as "Agent Generators"
-UI->>API : POST /api/discuss { topic }
-API->>Analyzer : analyze_topic(topic)
-API->>Search : research_topic(topic)
-Search-->>API : research_facts[]
-API->>Generator : generate_* functions
-Generator-->>API : structured debate content
-API-->>UI : JSON response with phases and synthesis
+classDiagram
+class Agent {
++id string
++name string
++role string
++color string
++portrait string
++systemPrompt string
+}
+class Cipher {
++systemPrompt "Skeptic reasoning..."
+}
+class Nova {
++systemPrompt "Advocate reasoning..."
+}
+class Prism {
++systemPrompt "Synthesizer reasoning..."
+}
+Agent <|-- Cipher
+Agent <|-- Nova
+Agent <|-- Prism
 ```
 
 **Diagram sources**
-- [forum/server.py:449-483](file://forum/server.py#L449-L483)
-- [forum/server.py:68-140](file://forum/server.py#L68-L140)
-- [forum/server.py:150-421](file://forum/server.py#L150-L421)
-- [forum/engine.js:30-226](file://forum/engine.js#L30-L226)
+- [dissensus-engine/server/agents.js:8-148](file://dissensus-engine/server/agents.js#L8-L148)
 
 **Section sources**
-- [forum/server.py:1-495](file://forum/server.py#L1-L495)
-- [forum/engine.js:1-323](file://forum/engine.js#L1-L323)
+- [dissensus-engine/server/agents.js:8-148](file://dissensus-engine/server/agents.js#L8-L148)
+
+### Card Generation System
+The card generator creates shareable PNG cards for social media:
+- Twitter-optimized 1200×630 dimensions
+- Automatic truncation of long verdicts
+- Optional LLM summarization for complex debates
+- Crypto disclosure for cryptocurrency topics
+
+```mermaid
+flowchart TD
+Input["Debate Verdict + Topic"] --> Extract["Extract key content"]
+Extract --> Summarize{"Long verdict?"}
+Summarize --> |Yes| LLM["Optional LLM summarization"]
+Summarize --> |No| Generate["Generate card directly"]
+LLM --> Generate
+Generate --> Font["Load Inter font"]
+Font --> Render["Render SVG with Satori"]
+Render --> PNG["Convert to PNG with Resvg"]
+PNG --> Output["Downloadable card"]
+```
+
+**Diagram sources**
+- [dissensus-engine/server/card-generator.js:170-361](file://dissensus-engine/server/card-generator.js#L170-L361)
+
+**Section sources**
+- [dissensus-engine/server/card-generator.js:1-361](file://dissensus-engine/server/card-generator.js#L1-L361)
 
 ### Frontend Applications
 - Debate UI (dissensus-engine/public)
   - Provider/model selection, API key handling, SSE consumption
   - Debate card generation and metrics dashboard
+  - Saved debate permalink support
 - Landing Page (diss-launch-kit/website)
-  - Informational site with navigation to the debate app and token details
+  - Informational site with navigation to the debate app and project overview
 
 ```mermaid
 graph LR
@@ -285,45 +326,49 @@ FE_Index["public/index.html"] --> FE_App["public/js/app.js"]
 FE_App --> SSE_Connect["Fetch SSE stream"]
 FE_App --> CardGen["POST /api/card"]
 FE_App --> Metrics["GET /metrics"]
+FE_App --> Config["GET /api/config"]
+FE_App --> Providers["GET /api/providers"]
+FE_App --> Validate["POST /api/debate/validate"]
+FE_App --> Stream["GET /api/debate/stream"]
 ```
 
 **Diagram sources**
-- [dissensus-engine/public/index.html:1-217](file://dissensus-engine/public/index.html#L1-L217)
-- [dissensus-engine/public/js/app.js:1-554](file://dissensus-engine/public/js/app.js#L1-L554)
+- [dissensus-engine/public/index.html:1-183](file://dissensus-engine/public/index.html#L1-L183)
+- [dissensus-engine/public/js/app.js:1-620](file://dissensus-engine/public/js/app.js#L1-L620)
 
 **Section sources**
-- [dissensus-engine/public/index.html:1-217](file://dissensus-engine/public/index.html#L1-L217)
-- [dissensus-engine/public/js/app.js:1-554](file://dissensus-engine/public/js/app.js#L1-L554)
+- [dissensus-engine/public/index.html:1-183](file://dissensus-engine/public/index.html#L1-L183)
+- [dissensus-engine/public/js/app.js:1-620](file://dissensus-engine/public/js/app.js#L1-L620)
 - [diss-launch-kit/website/index.html:1-451](file://diss-launch-kit/website/index.html#L1-L451)
 
 ## Dependency Analysis
 The system exhibits clear module boundaries and minimal coupling:
-- Express server depends on debate engine, metrics, and card generator modules
+- Express server depends on debate engine, metrics, card generator, and agents modules
 - Frontend depends on server APIs and local state management
-- Research platform is decoupled and can be scaled independently
 - AI provider integrations are abstracted behind a provider configuration object
+- All components are self-contained within the Node.js ecosystem
 
 ```mermaid
 graph TB
 Express["server/index.js"] --> Debate["server/debate-engine.js"]
 Express --> Metrics["server/metrics.js"]
+Express --> Card["server/card-generator.js"]
+Express --> Agents["server/agents.js"]
 Frontend["public/js/app.js"] --> Express
-ForumUI["forum/engine.js"] --> ForumAPI["forum/server.py"]
-ForumAPI --> Research["Web Search + Generators"]
+Agents --> Providers["Provider Config"]
 ```
 
 **Diagram sources**
-- [dissensus-engine/server/index.js:11-24](file://dissensus-engine/server/index.js#L11-L24)
-- [dissensus-engine/server/debate-engine.js:11-13](file://dissensus-engine/server/debate-engine.js#L11-L13)
+- [dissensus-engine/server/index.js:11-16](file://dissensus-engine/server/index.js#L11-L16)
+- [dissensus-engine/server/debate-engine.js:11-12](file://dissensus-engine/server/debate-engine.js#L11-L12)
 - [dissensus-engine/server/metrics.js:1-8](file://dissensus-engine/server/metrics.js#L1-L8)
-- [dissensus-engine/public/js/app.js:1-6](file://dissensus-engine/public/js/app.js#L1-L6)
-- [forum/engine.js:1-9](file://forum/engine.js#L1-L9)
-- [forum/server.py:11-19](file://forum/server.py#L11-L19)
+- [dissensus-engine/server/card-generator.js:7-9](file://dissensus-engine/server/card-generator.js#L7-L9)
+- [dissensus-engine/server/agents.js:1-7](file://dissensus-engine/server/agents.js#L1-L7)
 
 **Section sources**
-- [dissensus-engine/server/index.js:1-356](file://dissensus-engine/server/index.js#L1-L356)
+- [dissensus-engine/server/index.js:1-382](file://dissensus-engine/server/index.js#L1-L382)
 - [dissensus-engine/server/debate-engine.js:1-399](file://dissensus-engine/server/debate-engine.js#L1-L399)
-- [forum/server.py:1-495](file://forum/server.py#L1-L495)
+- [dissensus-engine/server/card-generator.js:1-361](file://dissensus-engine/server/card-generator.js#L1-L361)
 
 ## Performance Considerations
 - SSE Streaming
@@ -332,12 +377,12 @@ ForumAPI --> Research["Web Search + Generators"]
 - Rate Limiting
   - Express rate limiter protects endpoints from abuse; configurable per environment
 - Memory and CPU
-  - Lightweight Node.js server; Python research engine can be scaled separately
+  - Lightweight Node.js server suitable for single-node VPS deployment
 - Caching and Compression
   - Nginx serves static assets with caching and gzip compression
 - Scalability
   - Stateless design allows horizontal scaling of the Express server behind a load balancer
-  - Research engine can be containerized and scaled independently
+  - Current deployment uses single-node VPS for simplicity and cost-effectiveness
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -359,38 +404,42 @@ Common issues and resolutions:
 - [dissensus-engine/docs/DEPLOY-VPS.md:601-672](file://dissensus-engine/docs/DEPLOY-VPS.md#L601-L672)
 
 ## Conclusion
-Dissensus combines a real-time AI debate engine with a research-driven synthesis platform. The modular architecture supports clear separation of concerns, enabling independent scaling and maintenance of each component. The Express server layer provides robust SSE streaming, while the Python research engine offers flexible web research and structured debate synthesis. The simplified architecture focuses on core debate functionality without blockchain integration or staking mechanisms.
+Dissensus combines a real-time AI debate engine with a modern Node.js architecture. The streamlined architecture supports clear separation of concerns, enabling independent scaling and maintenance of each component. The Express server layer provides robust SSE streaming, while the AI debate engine offers flexible multi-agent orchestration with three distinct agent personalities. The simplified architecture focuses on core debate functionality without legacy components, making it ideal for single-node VPS deployment.
 
 ## Appendices
 
 ### System Context Diagrams
-High-level user interaction and blockchain verification flows:
+High-level user interaction and AI provider integration flows:
 
 ```mermaid
 sequenceDiagram
 participant User as "User"
 participant App as "Debate App"
 participant API as "Express API"
+participant Engine as "Debate Engine"
+participant Agents as "Agent System"
 participant Providers as "AI Providers"
 User->>App : Enter topic and credentials
 App->>API : /api/debate/validate
 API-->>App : Validation result
 App->>API : /api/debate/stream
-API->>Providers : Streamed chat completions
-Providers-->>API : Incremental chunks
-API-->>App : SSE events
+API->>Engine : Initialize debate
+Engine->>Agents : Start 4-phase process
+Agents->>Providers : Streamed chat completions
+Providers-->>Agents : Incremental chunks
+Agents-->>API : Structured events
+API-->>App : SSE events with debateId
 App-->>User : Real-time debate UI
 ```
 
 **Diagram sources**
 - [dissensus-engine/public/js/app.js:209-341](file://dissensus-engine/public/js/app.js#L209-L341)
-- [dissensus-engine/server/index.js:156-230](file://dissensus-engine/server/index.js#L156-L230)
+- [dissensus-engine/server/index.js:183-256](file://dissensus-engine/server/index.js#L183-L256)
 
 ### Deployment Topology
-Recommended deployment topology for production:
+Current single-node VPS deployment with Node.js-only architecture:
 - Nginx as reverse proxy and SSL terminator
 - Express server behind systemd with automatic restarts
-- Separate Python research engine service
 - Environment-specific configuration via .env files
 - Firewall rules allowing only 80/443 and loopback to Node.js
 
@@ -400,7 +449,7 @@ Internet["Internet"] --> Nginx["Nginx (SSL, Proxy)"]
 Nginx --> Express["Express Server (Node.js)"]
 Express --> Providers["AI Providers"]
 Nginx --> Static["Static Assets"]
-Nginx -.-> Research["Python Research API"]
+Express --> Providers
 ```
 
 **Diagram sources**

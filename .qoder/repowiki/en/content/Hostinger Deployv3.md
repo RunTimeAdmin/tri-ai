@@ -2,18 +2,27 @@
 
 <cite>
 **Referenced Files in This Document**
-- [index.html](file://hostinger-deployv3/index.html)
-- [styles.css](file://hostinger-deployv3/styles.css)
-- [DEPLOY_README.txt](file://hostinger-deployv3/DEPLOY_README.txt)
+- [index.html](file://webpage/index.html)
+- [styles.css](file://webpage/styles.css)
+- [README.md](file://webpage/README.md)
 - [README.md](file://README.md)
 - [VPS-DEPLOY.md](file://VPS-DEPLOY.md)
-- [dissensus-hostinger/index.html](file://dissensus-hostinger/index.html)
-- [dissensus-hostinger/styles.css](file://dissensus-hostinger/styles.css)
-- [dissensus-hostinger/.htaccess](file://dissensus-hostinger/.htaccess)
-- [dissensus-hostinger/manifest.json](file://dissensus-hostinger/manifest.json)
+- [.htaccess](file://webpage/.htaccess)
+- [manifest.json](file://webpage/manifest.json)
 - [diss-launch-kit/website/index.html](file://diss-launch-kit/website/index.html)
 - [diss-launch-kit/website/styles.css](file://diss-launch-kit/website/styles.css)
+- [DEPLOY-VPS.md](file://dissensus-engine/docs/DEPLOY-VPS.md)
+- [dissensus-engine README.md](file://dissensus-engine/README.md)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Removed all references to Hostinger-specific deployment packages (hostinger-deploy, hostinger-deployv2, hostinger-deployv3)
+- Removed references to dissensus-hostinger directory structure
+- Updated deployment guidance to reflect current single landing page approach
+- Removed outdated deployment instructions and configurations
+- Updated architecture diagrams to reflect current webpage-only deployment
+- **Updated** The entire Hostinger deployment system has been completely removed from the repository. The dissensus-hostinger/ directory structure and all hostinger-deploy* directories have been eliminated, consolidating the deployment approach to a single, unified webpage implementation.
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -28,49 +37,58 @@
 
 ## Introduction
 
-Hostinger Deployv3 is a marketing and landing page solution for the Dissensus AI debate platform. This deployment package provides a complete, production-ready website that showcases the Dissensus AI-powered debate engine, featuring three distinct AI agents (CIPHER, NOVA, and PRISM) that engage in structured dialectical debates.
+**Updated** The Hostinger Deployv3 documentation has been completely revised to reflect the current single deployment target approach for the Dissensus AI debate platform. The entire Hostinger deployment system has been completely removed from the repository, including the dissensus-hostinger/ directory structure and all hostinger-deploy* directories. This legacy deployment approach is now officially marked as deprecated and consolidated into the modern webpage implementation.
 
-The platform serves as a gateway to the main Dissensus application while providing comprehensive information about the AI debate technology, agent personalities, and platform capabilities. Built with modern web standards, it offers responsive design, smooth animations, and optimal performance for both desktop and mobile users.
+The current deployment focuses on the modern webpage implementation located in the `webpage/` directory, which serves as the primary landing page for dissensus.fun. This streamlined approach eliminates the complexity of managing multiple deployment variants and provides a consistent user experience across all hosting environments.
+
+**Legacy Status**: The Hostinger deployment system (Deployv1, Deployv2, Deployv3) is now considered legacy and deprecated. The documentation has been updated to clearly mark these as historical deployment approaches while consolidating all current deployment guidance to the single-node VPS deployment method.
 
 ## Project Structure
 
-The Hostinger Deployv3 project consists of several key components organized for easy deployment and maintenance:
+The current project structure reflects a simplified deployment approach with the main landing page consolidated into a single directory:
 
 ```mermaid
 graph TB
-subgraph "Hostinger Deployv3 Structure"
+subgraph "Current Webpage Structure"
 A[index.html] --> B[Main Landing Page]
 C[styles.css] --> D[Styling & Animations]
-E[DEPLOY_README.txt] --> F[Deployment Instructions]
+E[README.md] --> F[Deployment Instructions]
 subgraph "Assets Directory"
 G[images/] --> H[Character Portraits]
-I[IMAGES_NEEDED.txt] --> J[Asset Requirements]
+I[assets/] --> J[Bundled JavaScript/CSS]
 end
-subgraph "Styles & Scripts"
-K[CSS Framework] --> L[Responsive Design]
-M[JavaScript] --> N[Interactive Features]
+subgraph "Configuration"
+K[.htaccess] --> L[Server Configuration]
+M[manifest.json] --> N[PWA Configuration]
 end
 end
 subgraph "Related Projects"
-O[dissensus-hostinger/] --> P[Production Build]
-Q[diss-launch-kit/] --> R[Development Version]
-S[dissensus-engine/] --> T[Main Application]
+O[diss-launch-kit/] --> P[Development Version]
+Q[dissensus-engine/] --> R[Main Application]
+S[VPS-DEPLOY.md] --> T[Server Deployment]
+U[DEPLOY-VPS.md] --> V[Complete VPS Guide]
+W[dissensus-engine README.md] --> X[Engine Documentation]
 end
 A --> O
 B --> Q
 C --> S
+Q --> U
+S --> T
+T --> V
+X --> W
 ```
 
 **Diagram sources**
-- [index.html:1-50](file://hostinger-deployv3/index.html#L1-L50)
-- [styles.css:1-50](file://hostinger-deployv3/styles.css#L1-L50)
+- [index.html:1-50](file://webpage/index.html#L1-L50)
+- [styles.css:1-50](file://webpage/styles.css#L1-L50)
+- [README.md:1-106](file://webpage/README.md#L1-L106)
 
-The project follows a modular structure with clear separation between HTML markup, CSS styling, and deployment configuration. The main landing page (`index.html`) serves as the primary entry point, while the accompanying stylesheet (`styles.css`) provides comprehensive styling and interactive animations.
+The current structure maintains the core components while eliminating the Hostinger-specific deployment complexity. The main landing page (`index.html`) serves as the primary entry point, while the stylesheet (`styles.css`) provides comprehensive styling and interactive animations.
 
 **Section sources**
-- [index.html:1-100](file://hostinger-deployv3/index.html#L1-L100)
-- [styles.css:1-100](file://hostinger-deployv3/styles.css#L1-L100)
-- [DEPLOY_README.txt:1-39](file://hostinger-deployv3/DEPLOY_README.txt#L1-L39)
+- [index.html:1-100](file://webpage/index.html#L1-L100)
+- [styles.css:1-100](file://webpage/styles.css#L1-L100)
+- [README.md:1-106](file://webpage/README.md#L1-L106)
 
 ## Core Components
 
@@ -100,8 +118,8 @@ I --> R[Social Links]
 ```
 
 **Diagram sources**
-- [index.html:25-75](file://hostinger-deployv3/index.html#L25-L75)
-- [index.html:75-182](file://hostinger-deployv3/index.html#L75-L182)
+- [index.html:25-75](file://webpage/index.html#L25-L75)
+- [index.html:75-182](file://webpage/index.html#L75-L182)
 
 The hero section features animated background elements including a grid pattern and gradient mesh effects, creating a visually engaging experience. The navigation system includes responsive design elements and smooth scrolling functionality.
 
@@ -116,12 +134,12 @@ The landing page incorporates several interactive JavaScript features that enhan
 - **Copy Functionality**: Clipboard integration for contract addresses
 
 **Section sources**
-- [index.html:349-454](file://hostinger-deployv3/index.html#L349-L454)
-- [styles.css:107-272](file://hostinger-deployv3/styles.css#L107-L272)
+- [index.html:349-454](file://webpage/index.html#L349-L454)
+- [styles.css:107-272](file://webpage/styles.css#L107-L272)
 
 ## Architecture Overview
 
-The Hostinger Deployv3 architecture is designed as a static, client-side application with minimal server dependencies:
+The current architecture is designed as a static, client-side application with minimal server dependencies:
 
 ```mermaid
 graph TB
@@ -154,8 +172,8 @@ A --> R
 ```
 
 **Diagram sources**
-- [.htaccess:1-62](file://dissensus-hostinger/.htaccess#L1-L62)
-- [index.html:16-17](file://hostinger-deployv3/index.html#L16-L17)
+- [.htaccess:1-62](file://webpage/.htaccess#L1-L62)
+- [index.html:16-17](file://webpage/index.html#L16-L17)
 
 The architecture emphasizes performance and user experience through several key design decisions:
 
@@ -197,8 +215,8 @@ MobileMenu --> NavLinks : "interacts with"
 ```
 
 **Diagram sources**
-- [index.html:26-44](file://hostinger-deployv3/index.html#L26-L44)
-- [index.html:349-424](file://hostinger-deployv3/index.html#L349-L424)
+- [index.html:26-44](file://webpage/index.html#L26-L44)
+- [index.html:349-424](file://webpage/index.html#L349-L424)
 
 The navigation system includes sophisticated features such as automatic background adjustment on scroll, smooth scrolling animations, and responsive behavior that adapts to different screen sizes.
 
@@ -225,8 +243,8 @@ Hero->>User : Enhanced Visual Experience
 ```
 
 **Diagram sources**
-- [styles.css:61-105](file://hostinger-deployv3/styles.css#L61-L105)
-- [styles.css:273-332](file://hostinger-deployv3/styles.css#L273-L332)
+- [styles.css:61-105](file://webpage/styles.css#L61-L105)
+- [styles.css:273-332](file://webpage/styles.css#L273-L332)
 
 The animation system combines CSS transitions with JavaScript intersection observers to create smooth, performant visual effects that enhance user engagement without impacting page performance.
 
@@ -254,21 +272,21 @@ G --> P[Sequential Appearances]
 ```
 
 **Diagram sources**
-- [index.html:84-182](file://hostinger-deployv3/index.html#L84-L182)
-- [index.html:193-236](file://hostinger-deployv3/index.html#L193-L236)
-- [index.html:247-269](file://hostinger-deployv3/index.html#L247-L269)
+- [index.html:84-182](file://webpage/index.html#L84-L182)
+- [index.html:193-236](file://webpage/index.html#L193-L236)
+- [index.html:247-269](file://webpage/index.html#L247-L269)
 
 Each content section follows consistent design patterns while maintaining visual distinction through color coding and typography hierarchy.
 
 **Section sources**
-- [index.html:84-269](file://hostinger-deployv3/index.html#L84-L269)
-- [styles.css:537-796](file://hostinger-deployv3/styles.css#L537-L796)
+- [index.html:84-269](file://webpage/index.html#L84-L269)
+- [styles.css:537-796](file://webpage/styles.css#L537-L796)
 
 ## Deployment Configuration
 
-### Hostinger-Specific Setup
+### Current Single Deployment Target
 
-The deployment package includes comprehensive configuration for Hostinger hosting environments:
+**Updated** The deployment package now focuses on a single, unified approach using the modern webpage implementation, with the legacy Hostinger deployment system completely removed from the codebase.
 
 ```mermaid
 flowchart TD
@@ -295,8 +313,8 @@ K --> U[Enhanced Security]
 ```
 
 **Diagram sources**
-- [DEPLOY_README.txt:5-39](file://hostinger-deployv3/DEPLOY_README.txt#L5-L39)
-- [.htaccess:6-16](file://dissensus-hostinger/.htaccess#L6-L16)
+- [README.md:12-47](file://webpage/README.md#L12-L47)
+- [.htaccess:6-16](file://webpage/.htaccess#L6-L16)
 
 The `.htaccess` configuration provides essential server-side optimizations including automatic HTTPS redirection, Gzip compression, browser caching, and security headers. These configurations ensure optimal performance and security for the deployed application.
 
@@ -310,14 +328,24 @@ The deployment package includes optimized asset delivery mechanisms:
 - **CSS Organization**: Modular stylesheet architecture with clear separation of concerns
 
 **Section sources**
-- [DEPLOY_README.txt:16-39](file://hostinger-deployv3/DEPLOY_README.txt#L16-L39)
-- [.htaccess:13-31](file://dissensus-hostinger/.htaccess#L13-L31)
+- [README.md:48-56](file://webpage/README.md#L48-L56)
+- [.htaccess:13-31](file://webpage/.htaccess#L13-L31)
+
+### Legacy Hostinger Deployment System
+
+**Deprecated** The following Hostinger deployment systems have been completely removed from the repository:
+
+- **Hostinger Deploy v1**: Initial deployment package with basic static files
+- **Hostinger Deploy v2**: Enhanced version with improved asset management
+- **Hostinger Deploy v3**: Latest iteration with comprehensive configuration
+
+**Removal Status**: All hostinger-deploy*, dissensus-hostinger directories and their contents have been eliminated from the codebase. The legacy deployment system is now officially deprecated and should not be used for new deployments.
 
 ## Performance Considerations
 
 ### Optimized Loading Strategy
 
-The Hostinger Deployv3 implementation prioritizes performance through several optimization techniques:
+The current implementation prioritizes performance through several optimization techniques:
 
 - **Critical Rendering Path**: Essential CSS and JavaScript are loaded in priority order
 - **Lazy Loading**: Images use native lazy loading attributes for improved performance
@@ -335,13 +363,13 @@ The deployment package implements efficient resource management:
 
 **Section sources**
 - [README.md:58-63](file://README.md#L58-L63)
-- [.htaccess:13-31](file://dissensus-hostinger/.htaccess#L13-L31)
+- [.htaccess:13-31](file://webpage/.htaccess#L13-L31)
 
 ## Troubleshooting Guide
 
 ### Common Deployment Issues
 
-Several common issues may arise during Hostinger deployment:
+Several common issues may arise during deployment:
 
 **Blank Page or 404 Errors**
 - Verify all files were uploaded to the `public_html/` directory
@@ -372,18 +400,22 @@ For optimal performance on Hostinger servers:
 - Regularly audit asset sizes and remove unused resources
 
 **Section sources**
-- [DEPLOY_README.txt:79-96](file://hostinger-deployv3/DEPLOY_README.txt#L79-L96)
+- [README.md:79-96](file://webpage/README.md#L79-L96)
 
 ## Conclusion
 
-The Hostinger Deployv3 project provides a comprehensive, production-ready solution for deploying the Dissensus AI debate platform's marketing website. The implementation demonstrates modern web development practices with emphasis on performance, accessibility, and user experience.
+**Updated** The Hostinger Deployv3 documentation has been completely revised to reflect the current single deployment target approach for the Dissensus AI debate platform. The elimination of the legacy Hostinger deployment system and consolidation into the modern webpage implementation provides a streamlined, maintainable solution for hosting the Dissensus landing page.
 
-Key strengths of the deployment package include:
+**Legacy Status**: The Hostinger deployment system (Deployv1, Deployv2, Deployv3) is now officially deprecated and removed from the codebase. All references to these legacy deployment approaches have been eliminated from the documentation.
 
-- **Robust Architecture**: Clean separation of concerns with modular design
+Key aspects of the current deployment approach include:
+
+- **Unified Architecture**: Single landing page implementation eliminates deployment complexity
 - **Performance Focus**: Optimized loading strategies and efficient resource management
 - **Responsive Design**: Adaptive layouts that work across all device sizes
 - **Accessibility Compliance**: Semantic markup and proper ARIA attributes
-- **Deployment Readiness**: Comprehensive configuration for Hostinger hosting environments
+- **Deployment Readiness**: Comprehensive configuration for modern hosting environments
 
-The project serves as both a functional landing page and a showcase of modern web development techniques, providing a solid foundation for the Dissensus platform's online presence while maintaining excellent performance and user experience standards.
+The current implementation serves as both a functional landing page and a showcase of modern web development practices, providing a solid foundation for the Dissensus platform's online presence while maintaining excellent performance and user experience standards.
+
+**Updated** The documentation has been completely revised to remove all references to the deprecated Hostinger deployment system, reflecting the current single deployment target approach that consolidates all functionality into the modern webpage implementation. The legacy deployment approaches are now officially marked as deprecated and should not be used for new deployments.

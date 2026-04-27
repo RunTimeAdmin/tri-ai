@@ -13,6 +13,9 @@ const { generateCard, summarizeVerdictForCard } = require('./card-generator');
 const { getDebateOfTheDay } = require('./debate-of-the-day');
 const { recordDebate, recordError, getPublicMetrics, getRecentTopics } = require('./metrics');
 const { saveDebate, getDebate, listRecent } = require('./debate-store');
+const { formatDebateJSON, generateDebatePDF } = require('./debate-export');
+const { registerUser, loginUser, getUser, authMiddleware, optionalAuth } = require('./auth');
+const { createWorkspace, getWorkspace, getUserWorkspaces } = require('./workspace');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -136,19 +139,68 @@ function validateModel(provider, model) {
   return { valid: true };
 }
 
+function buildAgentConfigs(query) {
+  const agents = ['cipher', 'nova', 'prism'];
+  const globalProvider = (query.provider || 'deepseek').toLowerCase();
+  const globalModel = query.model || '';
+
+  const configs = {};
+  for (const agent of agents) {
+    const providerName = (query[`${agent}_provider`] || globalProvider).toLowerCase();
+    const modelId = query[`${agent}_model`] || globalModel;
+    const providerDef = PROVIDERS[providerName];
+
+    if (!providerDef) continue;
+
+    const apiKey = getEffectiveApiKey(providerName);
+    if (!apiKey) continue;
+
+    configs[agent] = {
+      providerName,
+      model: modelId || Object.keys(providerDef.models)[0],
+      apiKey,
+      baseUrl: providerDef.baseUrl,
+      authHeader: providerDef.authHeader
+    };
+  }
+  return configs;
+}
+
 // ----------------------------------------------------------
 // Validate debate params (preflight - EventSource can't show 400 errors)
 // ----------------------------------------------------------
 app.post('/api/debate/validate', async (req, res) => {
   const { topic, provider, model } = req.body || {};
-  
+
   let topicTrimmed;
   try {
     topicTrimmed = sanitizeTopic(topic);
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }
-  
+
+  const hasPerAgentParams = ['cipher', 'nova', 'prism'].some(agent =>
+    req.body[`${agent}_provider`] || req.body[`${agent}_model`]
+  );
+
+  if (hasPerAgentParams) {
+    const agentConfigs = buildAgentConfigs(req.body);
+    const configuredAgents = Object.keys(agentConfigs);
+
+    if (configuredAgents.length === 0) {
+      return res.status(400).json({ error: 'No valid agent configurations found. Check provider and API key settings.' });
+    }
+
+    for (const [agent, cfg] of Object.entries(agentConfigs)) {
+      const modelCheck = validateModel(cfg.providerName, cfg.model);
+      if (!modelCheck.valid) {
+        return res.status(400).json({ error: `${agent}: ${modelCheck.error}` });
+      }
+    }
+
+    return res.json({ ok: true });
+  }
+
   const providerName = ((provider || 'deepseek') + '').toLowerCase();
   const modelId = model || (providerName === 'deepseek' ? 'deepseek-chat' : providerName === 'gemini' ? 'gemini-2.0-flash' : 'gpt-4o');
 
@@ -165,11 +217,95 @@ app.post('/api/debate/validate', async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Auth Routes ───────────────────────────────────────────────
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { email, password, name } = req.body;
+        const user = await registerUser(email, password, name);
+        // Auto-create personal workspace
+        createWorkspace(`${user.name}'s Workspace`, user.id);
+        res.status(201).json({ ok: true, user });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const result = await loginUser(email, password);
+        res.json(result);
+    } catch (err) {
+        res.status(401).json({ error: err.message });
+    }
+});
+
+app.get('/api/auth/me', authMiddleware, (req, res) => {
+    const user = getUser(req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json(user);
+});
+
+// ── Workspace Routes ──────────────────────────────────────────
+app.get('/api/workspaces', authMiddleware, (req, res) => {
+    const workspaces = getUserWorkspaces(req.user.id);
+    res.json(workspaces);
+});
+
+app.post('/api/workspaces', authMiddleware, (req, res) => {
+    try {
+        const { name } = req.body;
+        if (!name || !name.trim()) return res.status(400).json({ error: 'Workspace name required' });
+        const workspace = createWorkspace(name, req.user.id);
+        res.status(201).json(workspace);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+app.get('/api/workspaces/:id/debates', authMiddleware, (req, res) => {
+    const ws = getWorkspace(req.params.id);
+    if (!ws) return res.status(404).json({ error: 'Workspace not found' });
+    if (!ws.members.some(m => m.userId === req.user.id)) {
+        return res.status(403).json({ error: 'Not a member of this workspace' });
+    }
+    // List debates for this workspace from the debate store
+    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    const allRecent = listRecent(limit * 5); // Get more to filter
+    const wsDebates = allRecent.filter(d => d.workspaceId === req.params.id).slice(0, limit);
+    res.json(wsDebates);
+});
+
 // ── Debate Persistence Endpoints ──────────────────────────────
 app.get('/api/debate/:id', (req, res) => {
     const debate = getDebate(req.params.id);
     if (!debate) return res.status(404).json({ error: 'Debate not found' });
     res.json(debate);
+});
+
+// Structured JSON export
+app.get('/api/debate/:id/export/json', (req, res) => {
+    const debate = getDebate(req.params.id);
+    if (!debate) return res.status(404).json({ error: 'Debate not found' });
+    const structured = formatDebateJSON(debate);
+    res.setHeader('Content-Disposition', `attachment; filename="dissensus-${req.params.id.substring(0,8)}.json"`);
+    res.json(structured);
+});
+
+// PDF export
+app.get('/api/debate/:id/export/pdf', (req, res) => {
+    const debate = getDebate(req.params.id);
+    if (!debate) return res.status(404).json({ error: 'Debate not found' });
+    try {
+        const doc = generateDebatePDF(debate);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="dissensus-${req.params.id.substring(0,8)}.pdf"`);
+        doc.pipe(res);
+        doc.end();
+    } catch (err) {
+        console.error('PDF generation error:', err);
+        res.status(500).json({ error: 'Failed to generate PDF' });
+    }
 });
 
 app.get('/api/debates/recent', (req, res) => {
@@ -180,7 +316,7 @@ app.get('/api/debates/recent', (req, res) => {
 // ----------------------------------------------------------
 // Start Debate — SSE Streaming Endpoint
 // ----------------------------------------------------------
-app.get('/api/debate/stream', debateLimiter, async (req, res) => {
+app.get('/api/debate/stream', debateLimiter, optionalAuth, async (req, res) => {
   const { topic, provider, model } = req.query;
 
   // Input validation with sanitization
@@ -192,21 +328,46 @@ app.get('/api/debate/stream', debateLimiter, async (req, res) => {
     return;
   }
 
-  const providerName = (provider || 'deepseek').toLowerCase();
-  const modelId = model || (providerName === 'deepseek' ? 'deepseek-chat' : providerName === 'gemini' ? 'gemini-2.0-flash' : 'gpt-4o');
+  const hasPerAgentParams = ['cipher', 'nova', 'prism'].some(agent =>
+    req.query[`${agent}_provider`] || req.query[`${agent}_model`]
+  );
 
-  const modelCheck = validateModel(providerName, modelId);
-  if (!modelCheck.valid) {
-    res.status(400).json({ error: modelCheck.error });
-    return;
-  }
+  let engine;
+  let providerName;
+  let modelId;
+  let agentConfigs;
 
-  const effectiveKey = getEffectiveApiKey(providerName);
-  if (!effectiveKey) {
-    res.status(400).json({
-      error: `API key required. Set ${providerName.toUpperCase()}_API_KEY in server .env.`
-    });
-    return;
+  if (hasPerAgentParams) {
+    agentConfigs = buildAgentConfigs(req.query);
+    const configuredAgents = Object.keys(agentConfigs);
+
+    if (configuredAgents.length === 0) {
+      res.status(400).json({ error: 'No valid agent configurations found. Check provider and API key settings.' });
+      return;
+    }
+
+    engine = new DebateEngine(agentConfigs);
+    providerName = engine.providerName;
+    modelId = 'mixed';
+  } else {
+    providerName = (provider || 'deepseek').toLowerCase();
+    modelId = model || (providerName === 'deepseek' ? 'deepseek-chat' : providerName === 'gemini' ? 'gemini-2.0-flash' : 'gpt-4o');
+
+    const modelCheck = validateModel(providerName, modelId);
+    if (!modelCheck.valid) {
+      res.status(400).json({ error: modelCheck.error });
+      return;
+    }
+
+    const effectiveKey = getEffectiveApiKey(providerName);
+    if (!effectiveKey) {
+      res.status(400).json({
+        error: `API key required. Set ${providerName.toUpperCase()}_API_KEY in server .env.`
+      });
+      return;
+    }
+
+    engine = new DebateEngine(effectiveKey, providerName, modelId);
   }
 
   // Set up SSE headers
@@ -218,6 +379,18 @@ app.get('/api/debate/stream', debateLimiter, async (req, res) => {
   });
 
   const debateRecord = { topic: topicTrimmed, provider: providerName, model: modelId, phases: [], timestamp: new Date().toISOString() };
+
+  if (req.user) {
+    debateRecord.userId = req.user.id;
+    debateRecord.workspaceId = req.user.workspaceId;
+  }
+
+  if (hasPerAgentParams && agentConfigs) {
+    debateRecord.agentModels = {};
+    for (const [agent, cfg] of Object.entries(agentConfigs)) {
+      debateRecord.agentModels[agent] = { provider: cfg.providerName, model: cfg.model };
+    }
+  }
   
   const sendEvent = (type, data) => {
     // Accumulate for persistence
@@ -234,7 +407,6 @@ app.get('/api/debate/stream', debateLimiter, async (req, res) => {
   req.on('close', () => { aborted = true; });
 
   try {
-    const engine = new DebateEngine(effectiveKey, providerName, modelId);
     await engine.runDebate(topicTrimmed, (type, data) => {
       if (!aborted) sendEvent(type, data);
     });

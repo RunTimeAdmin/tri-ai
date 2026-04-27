@@ -57,3 +57,5 @@ htmlcov/
 
 # --- Debate Data ---
 data/debates/
+data/users.json
+data/workspaces.json

@@ -18,6 +18,8 @@ const agentPhaseContent = {
   prism: {}
 };
 
+const agentContentLength = { cipher: 0, nova: 0, prism: 0 };
+
 // --- Provider/Model Configuration ---
 const PROVIDER_CONFIG = {
   deepseek: {
@@ -81,6 +83,34 @@ function updateModels() {
   if (savedModel) modelSelect.value = savedModel;
 
   localStorage.setItem('dissensus_provider', provider);
+}
+
+// --- Mix Mode ---
+function toggleMixMode() {
+  const mixMode = document.getElementById('mixModels').checked;
+  document.querySelectorAll('.agent-model-select').forEach(el => {
+    el.style.display = mixMode ? 'flex' : 'none';
+  });
+  // Hide global provider/model when mix mode is on
+  const globalControls = document.querySelector('.provider-row');
+  if (globalControls) globalControls.style.display = mixMode ? 'none' : '';
+}
+
+function updateAgentModels(agentId) {
+  const providerSelect = document.querySelector(`.agent-provider-select[data-agent="${agentId}"]`);
+  const modelSelect = document.querySelector(`.agent-model-dropdown[data-agent="${agentId}"]`);
+  const provider = providerSelect.value;
+  const config = PROVIDER_CONFIG[provider];
+
+  modelSelect.innerHTML = '';
+  if (config && config.models) {
+    config.models.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.name;
+      modelSelect.appendChild(opt);
+    });
+  }
 }
 
 // --- Simple Markdown Renderer (with HTML escaping for XSS prevention) ---
@@ -188,21 +218,58 @@ function scrollToBottom(agentId) {
   if (el) el.scrollTop = el.scrollHeight;
 }
 
+function updateConviction(agentId, chunkLength) {
+  agentContentLength[agentId] = (agentContentLength[agentId] || 0) + chunkLength;
+  const maxLen = Math.max(...Object.values(agentContentLength), 1);
+
+  for (const [id, len] of Object.entries(agentContentLength)) {
+    const fill = document.getElementById(`conviction-${id}`);
+    if (fill) {
+      fill.style.width = `${Math.min((len / maxLen) * 100, 100)}%`;
+    }
+  }
+}
+
 // --- Start Debate ---
 async function startDebate() {
   try {
-  const providerSelect = $('providerSelect');
-  const modelSelect = $('modelSelect');
-  const provider = providerSelect ? providerSelect.value : 'deepseek';
-  const model = modelSelect ? modelSelect.value : 'deepseek-chat';
+  const mixMode = document.getElementById('mixModels').checked;
+  let provider, model;
+
   const topicInput = $('topicInput');
   const topic = (topicInput && topicInput.value || '').trim();
-  const hasServerKey = availableProviders.includes(provider);
 
-  if (!hasServerKey) {
-    const config = PROVIDER_CONFIG[provider];
-    alert(`${config.label.replace(/[🔥⚡🧠] /g, '')} is not configured on this server.`);
-    return;
+  if (mixMode) {
+    // Check each agent's provider has a server key
+    const missing = [];
+    for (const agent of ['cipher', 'nova', 'prism']) {
+      const prov = document.querySelector(`.agent-provider-select[data-agent="${agent}"]`);
+      if (prov && !availableProviders.includes(prov.value)) {
+        missing.push(PROVIDER_CONFIG[prov.value].label.replace(/[🔥⚡🧠] /g, ''));
+      }
+    }
+    if (missing.length > 0) {
+      alert(`The following providers are not configured: ${missing.join(', ')}`);
+      return;
+    }
+    provider = 'mixed';
+    model = 'mixed';
+  } else {
+    const providerSelect = $('providerSelect');
+    const modelSelect = $('modelSelect');
+    provider = providerSelect ? providerSelect.value : 'deepseek';
+    model = modelSelect ? modelSelect.value : 'deepseek-chat';
+    const hasServerKey = availableProviders.includes(provider);
+
+    if (!hasServerKey) {
+      const config = PROVIDER_CONFIG[provider];
+      alert(`${config.label.replace(/[🔥⚡🧠] /g, '')} is not configured on this server.`);
+      return;
+    }
+
+    // Save settings per provider
+    localStorage.setItem(`dissensus_model_${provider}`, model);
+    localStorage.setItem('dissensus_provider', provider);
   }
 
   if (!topic) {
@@ -217,10 +284,6 @@ async function startDebate() {
 
   if (isDebating) return;
   isDebating = true;
-
-  // Save settings per provider
-  localStorage.setItem(`dissensus_model_${provider}`, model);
-  localStorage.setItem('dissensus_provider', provider);
 
   // Store topic for Share Card
   lastDebateTopic = topic;
@@ -238,15 +301,25 @@ async function startDebate() {
   $('btnText').textContent = 'Debating...';
   $('btnSpinner').classList.remove('hidden');
 
-  setHeaderStatus(true, `Debating via ${PROVIDER_CONFIG[provider].label.replace(/[🔥⚡🧠] /g, '')}...`);
+  setHeaderStatus(true, mixMode ? 'Debating with mixed models...' : `Debating via ${PROVIDER_CONFIG[provider].label.replace(/[🔥⚡🧠] /g, '')}...`);
 
   // Preflight validation (EventSource can't show 400 error messages)
   try {
-    const validateBody = { topic, provider, model };
+    const validateBody = mixMode ? { topic } : { topic, provider, model };
+    if (mixMode) {
+      for (const agent of ['cipher', 'nova', 'prism']) {
+        const prov = document.querySelector(`.agent-provider-select[data-agent="${agent}"]`);
+        const mod = document.querySelector(`.agent-model-dropdown[data-agent="${agent}"]`);
+        if (prov && mod) {
+          validateBody[`${agent}_provider`] = prov.value;
+          validateBody[`${agent}_model`] = mod.value;
+        }
+      }
+    }
 
     const validateRes = await fetch('/api/debate/validate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(validateBody)
     });
     if (!validateRes.ok) {
@@ -259,7 +332,17 @@ async function startDebate() {
   }
 
   // Connect to SSE stream using fetch (better error handling than EventSource)
-  const params = new URLSearchParams({ topic, provider, model });
+  const params = new URLSearchParams(mixMode ? { topic } : { topic, provider, model });
+  if (mixMode) {
+    ['cipher', 'nova', 'prism'].forEach(agent => {
+      const prov = document.querySelector(`.agent-provider-select[data-agent="${agent}"]`);
+      const mod = document.querySelector(`.agent-model-dropdown[data-agent="${agent}"]`);
+      if (prov && mod) {
+        params.set(`${agent}_provider`, prov.value);
+        params.set(`${agent}_model`, mod.value);
+      }
+    });
+  }
   const streamUrl = `/api/debate/stream?${params.toString()}`;
 
   const rawText = { cipher: {}, nova: {}, prism: {} };
@@ -269,7 +352,7 @@ async function startDebate() {
   const debateTimeout = setTimeout(() => controller.abort(), 10 * 60 * 1000);
 
   try {
-    const res = await fetch(streamUrl, { signal: controller.signal });
+    const res = await fetch(streamUrl, { signal: controller.signal, headers: authHeaders() });
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({}));
       throw new Error(errBody.error || `Server error (${res.status})`);
@@ -354,6 +437,41 @@ function handleDebateEvent(data, rawText) {
       if (!rawText[agent]) rawText[agent] = {};
       rawText[agent][`phase-${phase}`] = '';
       getPhaseBlock(agent, phase);
+
+      const phaseStatusText = {
+        1: 'Analyzing...',
+        2: 'Arguing...',
+        3: 'Cross-examining...',
+        4: 'Delivering verdict...'
+      };
+      const statusEl = document.getElementById(`status-${data.agent}`);
+      if (statusEl) {
+        const statusText = phaseStatusText[currentPhase] || 'Speaking...';
+        statusEl.innerHTML = `<span>${statusText}</span> <span class="typing-indicator"><span></span><span></span><span></span></span>`;
+        statusEl.className = 'agent-status speaking-status ' + ['', 'analyzing', 'arguing', 'cross-examining', 'delivering-verdict'][currentPhase];
+      }
+
+      if (currentPhase === 3) {
+        const col = document.getElementById(`col-${data.agent}`);
+        if (col) col.classList.add('challenging');
+
+        const clashTargets = {
+          cipher: ['nova'],
+          nova: ['cipher'],
+          prism: ['cipher', 'nova']
+        };
+        const targets = clashTargets[data.agent] || [];
+        targets.forEach(target => {
+          const targetCol = document.getElementById(`col-${target}`);
+          if (targetCol) {
+            targetCol.classList.add('clashing');
+            setTimeout(() => targetCol.classList.remove('clashing'), 400);
+          }
+        });
+
+        const vs = document.getElementById('vsIndicator');
+        if (vs) vs.classList.add('active');
+      }
       break;
     }
 
@@ -368,6 +486,8 @@ function handleDebateEvent(data, rawText) {
       textEl.innerHTML = renderMarkdown(rawText[agent][key]);
       textEl.classList.add('cursor-blink');
       scrollToBottom(agent);
+
+      updateConviction(agent, chunk.length);
       break;
     }
 
@@ -376,6 +496,13 @@ function handleDebateEvent(data, rawText) {
       setAgentSpeaking(agent, false);
       const textEl = getPhaseBlock(agent, phase);
       if (textEl) textEl.classList.remove('cursor-blink');
+
+      if (currentPhase === 3) {
+        const col = document.getElementById(`col-${data.agent}`);
+        if (col) col.classList.remove('challenging');
+        const vs = document.getElementById('vsIndicator');
+        if (vs) vs.classList.remove('active');
+      }
       break;
     }
 
@@ -502,8 +629,14 @@ function resetDebateUI() {
     agentPhaseContent[agent] = {};
     setAgentWaiting(agent);
     const col = $(`col-${agent}`);
-    if (col) col.classList.remove('speaking');
+    if (col) col.classList.remove('speaking', 'challenging', 'clashing');
+    agentContentLength[agent] = 0;
+    const fill = document.getElementById(`conviction-${agent}`);
+    if (fill) fill.style.width = '0%';
   });
+
+  const vs = document.getElementById('vsIndicator');
+  if (vs) vs.classList.remove('active');
 
   $('verdictPanel').classList.remove('visible');
   $('verdictContent').innerHTML = '';
@@ -587,6 +720,20 @@ async function shareCard() {
   }
 }
 
+function exportJSON() {
+    const params = new URLSearchParams(window.location.search);
+    const debateId = params.get('debate');
+    if (!debateId) return alert('No debate to export. Complete a debate first.');
+    window.open(`/api/debate/${debateId}/export/json`, '_blank');
+}
+
+function exportPDF() {
+    const params = new URLSearchParams(window.location.search);
+    const debateId = params.get('debate');
+    if (!debateId) return alert('No debate to export. Complete a debate first.');
+    window.open(`/api/debate/${debateId}/export/pdf`, '_blank');
+}
+
 // --- On Load ---
 document.addEventListener('DOMContentLoaded', async () => {
   // Fetch server config (which providers have server-side keys)
@@ -604,6 +751,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   const savedProvider = localStorage.getItem('dissensus_provider') || 'deepseek';
   $('providerSelect').value = savedProvider;
   updateModels();
+
+  // Initialize per-agent model dropdowns
+  ['cipher', 'nova', 'prism'].forEach(agent => updateAgentModels(agent));
+
+  // Filter per-agent provider options based on available providers
+  document.querySelectorAll('.agent-provider-select option').forEach(opt => {
+    if (!availableProviders.includes(opt.value)) {
+      opt.disabled = true;
+      opt.style.display = 'none';
+    }
+  });
 
   // Enter key to start
   $('topicInput').addEventListener('keydown', (e) => {

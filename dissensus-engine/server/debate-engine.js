@@ -39,23 +39,49 @@ const PROVIDERS = {
 };
 
 class DebateEngine {
-  constructor(apiKey, provider = 'openai', model = 'gpt-4o') {
-    this.apiKey = apiKey;
-    this.provider = PROVIDERS[provider];
-    this.providerName = provider;
-    this.model = model;
-
-    if (!this.provider) {
-      throw new Error(`Unknown provider: ${provider}. Supported: openai, deepseek, gemini`);
+  constructor(apiKeyOrConfigs, provider, model) {
+    // Support both legacy single-provider mode and new per-agent mode
+    if (typeof apiKeyOrConfigs === 'object' && !provider) {
+      // New mode: per-agent configs
+      this.agentConfigs = apiKeyOrConfigs;
+      this.perAgentMode = true;
+      // Set defaults from first available config for backward compat
+      const first = Object.values(this.agentConfigs)[0];
+      this.providerName = first.providerName;
+      this.model = first.model;
+    } else {
+      // Legacy mode: single provider for all agents
+      this.perAgentMode = false;
+      this.apiKey = apiKeyOrConfigs;
+      this.provider = PROVIDERS[provider];
+      this.providerName = provider;
+      this.model = model;
+      this.baseUrl = this.provider.baseUrl;
     }
-
-    this.baseUrl = this.provider.baseUrl;
   }
 
   // ----------------------------------------------------------
   // Core AI Call — Streams response chunks via callback
   // ----------------------------------------------------------
   async callAgent(agentId, messages, onChunk) {
+    let baseUrl, apiKey, model, authHeader, providerName;
+
+    if (this.perAgentMode && this.agentConfigs[agentId]) {
+      const cfg = this.agentConfigs[agentId];
+      baseUrl = cfg.baseUrl;
+      apiKey = cfg.apiKey;
+      model = cfg.model;
+      authHeader = cfg.authHeader;
+      providerName = cfg.providerName;
+    } else {
+      // Legacy mode
+      baseUrl = this.baseUrl;
+      apiKey = this.apiKey;
+      model = this.model;
+      authHeader = this.provider.authHeader;
+      providerName = this.providerName;
+    }
+
     const agent = AGENTS[agentId];
     if (!agent) throw new Error(`Unknown agent: ${agentId}`);
 
@@ -70,14 +96,14 @@ class DebateEngine {
 
     let response;
     try {
-      response = await fetch(this.baseUrl, {
+      response = await fetch(baseUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': this.provider.authHeader(this.apiKey)
+          'Authorization': authHeader(apiKey)
         },
         body: JSON.stringify({
-          model: this.model,
+          model: model,
           messages: fullMessages,
           stream: true,
           temperature: 0.8,
@@ -91,7 +117,7 @@ class DebateEngine {
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`${this.providerName} API error (${response.status}): ${err}`);
+      throw new Error(`${providerName} API error (${response.status}): ${err}`);
     }
 
     let fullText = '';
