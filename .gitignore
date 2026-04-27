@@ -57,5 +57,9 @@ htmlcov/
 
 # --- Debate Data ---
 data/debates/
+data/dissensus.db
 data/users.json
 data/workspaces.json
+
+# --- Deploy Scripts ---
+deploy-env-to-vps.ps1

@@ -7,17 +7,18 @@
 - [debate-store.js](file://dissensus-engine/server/debate-store.js)
 - [metrics.js](file://dissensus-engine/server/metrics.js)
 - [agents.js](file://dissensus-engine/server/agents.js)
+- [auth.js](file://dissensus-engine/server/auth.js)
+- [workspace.js](file://dissensus-engine/server/workspace.js)
 - [app.js](file://dissensus-engine/public/js/app.js)
 - [nginx-dissensus.conf](file://dissensus-engine/docs/configs/nginx-dissensus.conf)
 </cite>
 
 ## Update Summary
 **Changes Made**
-- Added new debate persistence endpoints documentation
-- Enhanced validation section with sanitizeTopic() implementation
-- Updated API key security model documentation
-- Added debate storage and retrieval endpoints
-- Updated streaming implementation with debate persistence
+- Enhanced debate storage system documentation with ensureDir() function reliability improvements
+- Updated debate persistence capabilities with improved directory initialization
+- Added comprehensive directory management documentation across multiple modules
+- Updated streaming implementation with enhanced debate persistence reliability
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -41,7 +42,7 @@ The Dissensus AI Debate API provides a sophisticated real-time debate system tha
 
 The debate system follows a four-phase dialectical process: Independent Analysis, Opening Arguments, Cross-Examination, and Final Verdict. Each phase produces structured content that culminates in a comprehensive synthesis delivered by the PRISM agent.
 
-**Updated** Added comprehensive debate persistence capabilities with secure storage and retrieval endpoints.
+**Updated** Enhanced with reliable directory initialization through ensureDir() function for improved debate storage system stability and persistence capabilities.
 
 ## Project Structure
 
@@ -54,6 +55,8 @@ API[API Routes]
 Engine[Debate Engine]
 Store[Debate Store]
 Metrics[Metrics & Analytics]
+Auth[Authentication]
+Workspace[Workspace Management]
 end
 subgraph "Client Layer"
 Frontend[Web Frontend]
@@ -69,22 +72,30 @@ Frontend --> API
 API --> Engine
 API --> Store
 API --> Metrics
+API --> Auth
+API --> Workspace
 Engine --> Providers
 Store --> FS
+Auth --> FS
+Workspace --> FS
 API --> Coingecko
 Engine --> SSE
 SSE --> UI
 ```
 
 **Diagram sources**
-- [index.js:1-382](file://dissensus-engine/server/index.js#L1-L382)
+- [index.js:1-570](file://dissensus-engine/server/index.js#L1-L570)
 - [debate-engine.js:1-399](file://dissensus-engine/server/debate-engine.js#L1-L399)
-- [debate-store.js:1-83](file://dissensus-engine/server/debate-store.js#L1-L83)
+- [debate-store.js:1-88](file://dissensus-engine/server/debate-store.js#L1-L88)
+- [auth.js:1-129](file://dissensus-engine/server/auth.js#L1-L129)
+- [workspace.js:1-57](file://dissensus-engine/server/workspace.js#L1-L57)
 
 **Section sources**
-- [index.js:1-382](file://dissensus-engine/server/index.js#L1-L382)
+- [index.js:1-570](file://dissensus-engine/server/index.js#L1-L570)
 - [debate-engine.js:1-399](file://dissensus-engine/server/debate-engine.js#L1-L399)
-- [debate-store.js:1-83](file://dissensus-engine/server/debate-store.js#L1-L83)
+- [debate-store.js:1-88](file://dissensus-engine/server/debate-store.js#L1-L88)
+- [auth.js:1-129](file://dissensus-engine/server/auth.js#L1-L129)
+- [workspace.js:1-57](file://dissensus-engine/server/workspace.js#L1-L57)
 
 ## Core Components
 
@@ -95,21 +106,26 @@ The core debate orchestration system that coordinates the four-phase debate proc
 Supports multiple AI providers with their respective API endpoints, authentication methods, and model specifications.
 
 ### Debate Persistence System
-Secure storage and retrieval system for completed debates with automatic ID generation and file-based storage.
+Secure storage and retrieval system for completed debates with automatic ID generation, reliable directory initialization, and file-based storage.
+
+### Authentication & Authorization
+User management system with JWT-based authentication, workspace creation, and secure data storage.
 
 ### Real-time Streaming
 Server-Sent Events implementation that streams debate progress in real-time to clients.
 
-**Updated** Added debate persistence system with secure file-based storage and retrieval endpoints.
+**Updated** Enhanced with reliable directory initialization through ensureDir() function ensuring consistent debate storage system operation across all modules.
 
 **Section sources**
 - [debate-engine.js:41-399](file://dissensus-engine/server/debate-engine.js#L41-L399)
-- [index.js:14-85](file://dissensus-engine/server/index.js#L14-L85)
-- [debate-store.js:14-83](file://dissensus-engine/server/debate-store.js#L14-L83)
+- [index.js:14-18](file://dissensus-engine/server/index.js#L14-L18)
+- [debate-store.js:14-36](file://dissensus-engine/server/debate-store.js#L14-L36)
+- [auth.js:21-34](file://dissensus-engine/server/auth.js#L21-L34)
+- [workspace.js:8-21](file://dissensus-engine/server/workspace.js#L8-L21)
 
 ## Architecture Overview
 
-The debate system follows a layered architecture with clear separation of concerns:
+The debate system follows a layered architecture with clear separation of concerns and reliable directory management:
 
 ```mermaid
 sequenceDiagram
@@ -118,6 +134,7 @@ participant API as "API Gateway"
 participant Validator as "Validation Layer"
 participant Engine as "Debate Engine"
 participant Store as "Debate Store"
+participant DirInit as "Directory Initialization"
 participant Provider as "AI Provider"
 participant SSE as "SSE Stream"
 Client->>API : POST /api/debate/validate
@@ -125,11 +142,15 @@ API->>Validator : Validate parameters
 Validator-->>API : Validation result
 API-->>Client : {ok : true} or error
 Client->>API : GET /api/debate/stream
+API->>DirInit : ensureDir() check
+DirInit-->>API : Directory ready
 API->>Engine : Initialize debate
 Engine->>Provider : Send API request
 Provider-->>Engine : Stream response chunks
 Engine->>SSE : Emit structured events
 Engine->>Store : Persist debate data
+Store->>DirInit : ensureDir() check
+DirInit-->>Store : Directory ready
 SSE-->>Client : Real-time debate updates
 Client->>API : GET /api/debate/ : id
 API->>Store : Retrieve debate by ID
@@ -138,9 +159,11 @@ API-->>Client : Complete debate transcript
 ```
 
 **Diagram sources**
-- [index.js:177-311](file://dissensus-engine/server/index.js#L177-L311)
+- [index.js:298-407](file://dissensus-engine/server/index.js#L298-L407)
 - [debate-engine.js:121-396](file://dissensus-engine/server/debate-engine.js#L121-L396)
-- [debate-store.js:19-33](file://dissensus-engine/server/debate-store.js#L19-L33)
+- [debate-store.js:20-36](file://dissensus-engine/server/debate-store.js#L20-L36)
+- [auth.js:25-34](file://dissensus-engine/server/auth.js#L25-L34)
+- [workspace.js:12-21](file://dissensus-engine/server/workspace.js#L12-L21)
 
 ## Detailed Component Analysis
 
@@ -191,9 +214,41 @@ The system implements a structured dialectical process:
 3. **Phase 3: Cross-Examination** - Agents challenge each other's arguments
 4. **Phase 4: Final Verdict** - PRISM delivers synthesized conclusion
 
+### Directory Management System
+
+**Enhanced** All storage modules now implement reliable directory initialization through the ensureDir() function pattern:
+
+```mermaid
+flowchart TD
+Start["Application Startup"] --> Check1["Check DATA_DIR exists"]
+Check1 --> Exists1{"Directory exists?"}
+Exists1 --> |Yes| Ready1["Proceed with operations"]
+Exists1 --> |No| Create1["mkdirSync(DATA_DIR, { recursive: true })"]
+Create1 --> Ready1
+Ready1 --> Check2["Check DEBATES_DIR exists"]
+Check2 --> Exists2{"Directory exists?"}
+Exists2 --> |Yes| Ready2["Proceed with debate storage"]
+Exists2 --> |No| Create2["mkdirSync(DEBATES_DIR, { recursive: true })"]
+Create2 --> Ready2
+Ready2 --> Check3["Check USERS_DIR exists"]
+Check3 --> Exists3{"Directory exists?"}
+Exists3 --> |Yes| Ready3["Proceed with user storage"]
+Exists3 --> |No| Create3["mkdirSync(USERS_DIR, { recursive: true })"]
+Create3 --> Ready3
+Ready3 --> Complete["All directories initialized"]
+```
+
+**Diagram sources**
+- [debate-store.js:8-13](file://dissensus-engine/server/debate-store.js#L8-L13)
+- [auth.js:21-23](file://dissensus-engine/server/auth.js#L21-L23)
+- [workspace.js:8-10](file://dissensus-engine/server/workspace.js#L8-L10)
+
 **Section sources**
 - [debate-engine.js:121-396](file://dissensus-engine/server/debate-engine.js#L121-L396)
 - [agents.js:8-148](file://dissensus-engine/server/agents.js#L8-L148)
+- [debate-store.js:8-13](file://dissensus-engine/server/debate-store.js#L8-L13)
+- [auth.js:21-23](file://dissensus-engine/server/auth.js#L21-L23)
+- [workspace.js:8-10](file://dissensus-engine/server/workspace.js#L8-L10)
 
 ## API Reference
 
@@ -217,7 +272,7 @@ The system implements a structured dialectical process:
 - Validation Error: `{ "error": "validation message" }`
 
 **Section sources**
-- [index.js:142-166](file://dissensus-engine/server/index.js#L142-L166)
+- [index.js:188-200](file://dissensus-engine/server/index.js#L188-L200)
 
 ### Debate Streaming Endpoint
 
@@ -232,10 +287,10 @@ The system implements a structured dialectical process:
 
 **Response**: Server-Sent Events stream with structured JSON messages and automatic debate persistence.
 
-**Updated** Enhanced with debate persistence - debates are automatically saved with generated IDs and stored in JSON format.
+**Updated** Enhanced with reliable directory initialization - debates are automatically saved with generated IDs and stored in JSON format with improved directory management.
 
 **Section sources**
-- [index.js:183-256](file://dissensus-engine/server/index.js#L183-L256)
+- [index.js:298-407](file://dissensus-engine/server/index.js#L298-L407)
 
 ### Debate Persistence Endpoints
 
@@ -259,9 +314,29 @@ The system implements a structured dialectical process:
 
 **Response**: Array of debate metadata objects containing ID, topic preview, provider, and timestamp.
 
+**Get Workspace Debates**: `GET /api/workspaces/:id/debates`
+
+**Purpose**: Retrieve debates associated with a specific workspace.
+
+**Path Parameters**:
+- `id` (required): Workspace identifier
+
+**Query Parameters**:
+- `limit` (optional): Maximum number of debates (default: 20, max: 50)
+
+**Response**: Array of debate metadata filtered by workspace membership.
+
+**Export Options**: `GET /api/debate/:id/export/:format`
+
+**Formats**:
+- `json`: Structured JSON export with formatted debate content
+- `pdf`: PDF document generation for sharing and archiving
+
+**Response**: File download with appropriate content disposition headers.
+
 **Section sources**
-- [index.js:169-178](file://dissensus-engine/server/index.js#L169-L178)
-- [debate-store.js:35-80](file://dissensus-engine/server/debate-store.js#L35-L80)
+- [index.js:409-444](file://dissensus-engine/server/index.js#L409-L444)
+- [debate-store.js:20-85](file://dissensus-engine/server/debate-store.js#L20-L85)
 
 ## Rate Limiting and Policies
 
@@ -282,8 +357,7 @@ When `STAKING_ENFORCE=true` is configured:
 - Wallet validation performed against Solana address format
 
 **Section sources**
-- [index.js:66-72](file://dissensus-engine/server/index.js#L66-L72)
-- [index.js:90-96](file://dissensus-engine/server/index.js#L90-L96)
+- [index.js:68-91](file://dissensus-engine/server/index.js#L68-L91)
 - [index.js:316-322](file://dissensus-engine/server/index.js#L316-L322)
 - [index.js:421-427](file://dissensus-engine/server/index.js#L421-L427)
 
@@ -335,10 +409,10 @@ The `sanitizeTopic()` function performs the following validations:
 - Automatic availability detection for client configuration
 
 **Section sources**
-- [index.js:37-53](file://dissensus-engine/server/index.js#L37-L53)
-- [index.js:120-128](file://dissensus-engine/server/index.js#L120-L128)
-- [index.js:130-137](file://dissensus-engine/server/index.js#L130-L137)
-- [index.js:142-166](file://dissensus-engine/server/index.js#L142-L166)
+- [index.js:44-56](file://dissensus-engine/server/index.js#L44-L56)
+- [index.js:143-147](file://dissensus-engine/server/index.js#L143-L147)
+- [index.js:149-156](file://dissensus-engine/server/index.js#L149-L156)
+- [index.js:188-200](file://dissensus-engine/server/index.js#L188-L200)
 
 ## Streaming Implementation
 
@@ -406,7 +480,7 @@ Parser->>Client : Handle [DONE] termination
 **Diagram sources**
 - [app.js:294-347](file://dissensus-engine/public/js/app.js#L294-L347)
 
-**Updated** Enhanced with debate persistence - debates are automatically saved with unique IDs and can be retrieved later.
+**Updated** Enhanced with reliable directory initialization - debates are automatically saved with unique IDs and can be retrieved later with improved storage system stability.
 
 **Section sources**
 - [debate-engine.js:130-396](file://dissensus-engine/server/debate-engine.js#L130-L396)
@@ -426,6 +500,7 @@ Parser->>Client : Handle [DONE] termination
 - **Provider API Errors**: Propagated with provider context
 - **Network Issues**: Connection timeouts and retry logic
 - **Client Disconnection**: Graceful cleanup and resource release
+- **Directory Creation Errors**: Ensure directory initialization failures handled gracefully
 
 ### Rate Limiting Errors
 - **Response**: `{ "error": "Too many debates. Please wait a minute and try again." }`
@@ -471,9 +546,20 @@ location /api/debate/stream {
 }
 ```
 
+### Directory Management Integration
+
+**Enhanced** All storage modules now implement consistent directory management:
+
+- **Debate Storage**: `/data/debates/` directory with automatic creation
+- **User Storage**: `/data/users.json` file with automatic directory creation  
+- **Workspace Storage**: `/data/workspaces.json` file with automatic directory creation
+
 **Section sources**
 - [app.js:209-356](file://dissensus-engine/public/js/app.js#L209-L356)
 - [nginx-dissensus.conf:42-60](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L42-L60)
+- [debate-store.js:8-13](file://dissensus-engine/server/debate-store.js#L8-L13)
+- [auth.js:21-23](file://dissensus-engine/server/auth.js#L21-L23)
+- [workspace.js:8-10](file://dissensus-engine/server/workspace.js#L8-L10)
 
 ## Performance Considerations
 
@@ -496,10 +582,19 @@ location /api/debate/stream {
 - **File System Storage**: Efficient JSON serialization for debate transcripts
 - **ID Generation**: UUID-based unique identifiers for fast lookups
 - **Metadata Indexing**: Timestamp-based sorting for recent debates listing
+- **Directory Initialization**: Reliable ensureDir() function prevents race conditions during startup
+
+### Directory Management Performance
+- **Atomic Operations**: ensureDir() function ensures atomic directory creation
+- **Recursive Creation**: Supports nested directory structure creation
+- **Permission Handling**: Proper file system permissions for storage operations
+- **Race Condition Prevention**: Thread-safe directory initialization across concurrent operations
 
 **Section sources**
-- [debate-store.js:19-33](file://dissensus-engine/server/debate-store.js#L19-L33)
-- [debate-store.js:57-80](file://dissensus-engine/server/debate-store.js#L57-L80)
+- [debate-store.js:20-36](file://dissensus-engine/server/debate-store.js#L20-L36)
+- [debate-store.js:60-85](file://dissensus-engine/server/debate-store.js#L60-L85)
+- [auth.js:25-34](file://dissensus-engine/server/auth.js#L25-L34)
+- [workspace.js:12-21](file://dissensus-engine/server/workspace.js#L12-L21)
 
 ## Troubleshooting Guide
 
@@ -524,12 +619,20 @@ location /api/debate/stream {
 - Verify data directory permissions for debate storage
 - Check file system space for debate JSON files
 - Ensure UUID format validation for debate retrieval
+- Verify ensureDir() function executes successfully during startup
+
+**Directory Initialization Issues**
+- **Symptom**: "Cannot create directory" errors during debate storage
+- **Solution**: Check file system permissions for `/data/` directory
+- **Prevention**: Ensure ensureDir() function runs during application startup
+- **Verification**: Check that `/data/debates/` directory exists after first debate
 
 **Debugging Techniques**
 - Enable detailed logging in development mode
 - Monitor SSE event flow in browser developer tools
 - Check server logs for error patterns
 - Validate API keys and provider configuration
+- Monitor directory creation logs for ensureDir() function execution
 
 ### Monitoring and Metrics
 
@@ -539,6 +642,7 @@ The system provides comprehensive metrics for monitoring:
 - **Error Tracking**: Request success/failure rates
 - **Staking Metrics**: Tier distribution and usage patterns
 - **Real-time Dashboard**: Live metrics for operational visibility
+- **Storage Metrics**: Directory creation success rates and file system health
 
 **Section sources**
 - [metrics.js:100-112](file://dissensus-engine/server/metrics.js#L100-L112)
@@ -546,15 +650,18 @@ The system provides comprehensive metrics for monitoring:
 
 ## Conclusion
 
-The Dissensus AI Debate API provides a robust, scalable solution for real-time structured debate generation with comprehensive persistence capabilities. Its modular architecture, enhanced validation system with sanitization, and efficient streaming implementation make it suitable for production deployment while maintaining excellent developer experience.
+The Dissensus AI Debate API provides a robust, scalable solution for real-time structured debate generation with comprehensive persistence capabilities and reliable directory management. Its modular architecture, enhanced validation system with sanitization, efficient streaming implementation, and improved debate storage system make it suitable for production deployment while maintaining excellent developer experience.
 
 Key strengths include:
 - **Real-time Streaming**: Seamless SSE implementation for immediate feedback
 - **Multi-provider Support**: Flexible integration with major AI providers
 - **Structured Output**: Predictable event-driven interface for reliable client integration
 - **Enhanced Security**: Server-side API key management prevents unauthorized access
-- **Comprehensive Persistence**: Secure debate storage with retrieval capabilities
+- **Comprehensive Persistence**: Secure debate storage with reliable directory initialization
+- **Reliable Directory Management**: Atomic ensureDir() function prevents race conditions and startup failures
 - **Production Ready**: Comprehensive error handling, rate limiting, and monitoring
 - **Extensible Design**: Modular components support easy customization and enhancement
 
-The system successfully balances performance, reliability, and developer usability while providing a compelling foundation for AI-powered debate applications with persistent storage capabilities.
+The system successfully balances performance, reliability, and developer usability while providing a compelling foundation for AI-powered debate applications with persistent storage capabilities and robust directory management across all storage modules.
+
+**Updated** Enhanced with reliable directory initialization through ensureDir() function ensuring consistent debate storage system operation and preventing race conditions during concurrent access scenarios.

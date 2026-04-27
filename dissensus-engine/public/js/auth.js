@@ -1,36 +1,26 @@
 // ── Dissensus Auth Client ─────────────────────────────────────
-const AUTH_TOKEN_KEY = 'dissensus_token';
-const AUTH_USER_KEY = 'dissensus_user';
+// Cookie-based auth with CSRF protection. No localStorage.
 
-function getAuthToken() {
-    return localStorage.getItem(AUTH_TOKEN_KEY);
+let currentUser = null;
+let csrfToken = null;
+
+function getCsrfToken() {
+    if (csrfToken) return csrfToken;
+    const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+    return match ? decodeURIComponent(match[1]) : null;
 }
 
-function getAuthUser() {
-    try { return JSON.parse(localStorage.getItem(AUTH_USER_KEY)); } catch { return null; }
-}
-
-function setAuth(token, user) {
-    localStorage.setItem(AUTH_TOKEN_KEY, token);
-    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
-    updateAuthUI();
-}
-
-function clearAuth() {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    localStorage.removeItem(AUTH_USER_KEY);
-    updateAuthUI();
+function csrfHeaders() {
+    const token = getCsrfToken();
+    return token ? { 'X-CSRF-Token': token } : {};
 }
 
 function isLoggedIn() {
-    return !!getAuthToken();
+    return !!currentUser;
 }
 
-// Returns headers object with auth token if logged in
-function authHeaders() {
-    const token = getAuthToken();
-    if (token) return { 'Authorization': `Bearer ${token}` };
-    return {};
+function getCurrentUser() {
+    return currentUser;
 }
 
 async function handleRegister(e) {
@@ -40,7 +30,7 @@ async function handleRegister(e) {
     const name = document.getElementById('registerName').value.trim();
     const errorEl = document.getElementById('registerError');
     errorEl.textContent = '';
-    
+
     try {
         const res = await fetch('/api/auth/register', {
             method: 'POST',
@@ -49,7 +39,7 @@ async function handleRegister(e) {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Registration failed');
-        
+
         // Auto-login after register
         const loginRes = await fetch('/api/auth/login', {
             method: 'POST',
@@ -58,8 +48,10 @@ async function handleRegister(e) {
         });
         const loginData = await loginRes.json();
         if (!loginRes.ok) throw new Error(loginData.error || 'Login failed');
-        
-        setAuth(loginData.token, loginData.user);
+
+        currentUser = loginData.user;
+        csrfToken = loginData.csrfToken;
+        updateAuthUI();
         closeAuthModal();
     } catch (err) {
         errorEl.textContent = err.message;
@@ -72,7 +64,7 @@ async function handleLogin(e) {
     const password = document.getElementById('loginPassword').value;
     const errorEl = document.getElementById('loginError');
     errorEl.textContent = '';
-    
+
     try {
         const res = await fetch('/api/auth/login', {
             method: 'POST',
@@ -81,25 +73,34 @@ async function handleLogin(e) {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Invalid email or password');
-        
-        setAuth(data.token, data.user);
+
+        currentUser = data.user;
+        csrfToken = data.csrfToken;
+        updateAuthUI();
         closeAuthModal();
     } catch (err) {
         errorEl.textContent = err.message;
     }
 }
 
-function logout() {
-    clearAuth();
+async function logout() {
+    await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: csrfHeaders(),
+        credentials: 'same-origin'
+    });
+    currentUser = null;
+    csrfToken = null;
+    updateAuthUI();
     closeMyDebates();
 }
 
 function updateAuthUI() {
-    const user = getAuthUser();
+    const user = currentUser;
     const loginBtn = document.getElementById('loginBtn');
     const userMenu = document.getElementById('userMenu');
     const userName = document.getElementById('userName');
-    
+
     if (user && loginBtn && userMenu) {
         loginBtn.style.display = 'none';
         userMenu.style.display = 'flex';
@@ -132,31 +133,38 @@ async function showMyDebates() {
     const panel = document.getElementById('myDebatesPanel');
     if (!panel) return;
     panel.style.display = 'block';
-    
-    const user = getAuthUser();
+
+    const user = currentUser;
     if (!user) return;
-    
+
     const listEl = document.getElementById('myDebatesList');
     listEl.innerHTML = '<div class="loading-debates">Loading...</div>';
-    
+
     try {
         const res = await fetch(`/api/workspaces/${user.workspaceId}/debates?limit=20`, {
-            headers: authHeaders()
+            credentials: 'same-origin'
         });
         if (!res.ok) throw new Error('Failed to load debates');
         const debates = await res.json();
-        
+
         if (debates.length === 0) {
             listEl.innerHTML = '<div class="no-debates">No debates yet. Start your first debate!</div>';
             return;
         }
-        
+
         listEl.innerHTML = debates.map(d => `
-            <a href="/?debate=${d.id}" class="debate-list-item" onclick="loadDebateFromList('${d.id}'); return false;">
+            <a href="/?debate=${d.id}" class="debate-list-item" data-debate-id="${d.id}">
                 <div class="debate-list-topic">${escapeHtml(d.topic)}</div>
                 <div class="debate-list-meta">${d.provider} &middot; ${new Date(d.timestamp).toLocaleDateString()}</div>
             </a>
         `).join('');
+
+        listEl.querySelectorAll('.debate-list-item').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.preventDefault();
+                loadDebateFromList(el.dataset.debateId);
+            });
+        });
     } catch (err) {
         listEl.innerHTML = `<div class="no-debates">Error: ${err.message}</div>`;
     }
@@ -169,7 +177,6 @@ function closeMyDebates() {
 
 function loadDebateFromList(debateId) {
     closeMyDebates();
-    // Use the existing loadSavedDebate function from app.js
     if (typeof loadSavedDebate === 'function') {
         loadSavedDebate(debateId);
     } else {
@@ -177,18 +184,27 @@ function loadDebateFromList(debateId) {
     }
 }
 
-// Helper - reuse escapeHtml from app.js or define locally
 function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
 }
 
+async function initAuth() {
+    try {
+        const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+        if (res.ok) {
+            const data = await res.json();
+            currentUser = data.user;
+            updateAuthUI();
+        }
+    } catch {}
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     updateAuthUI();
-    
-    // Wire up form submissions
+
     const loginForm = document.getElementById('loginFormEl');
     const registerForm = document.getElementById('registerFormEl');
     if (loginForm) loginForm.addEventListener('submit', handleLogin);

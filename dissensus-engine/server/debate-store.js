@@ -12,6 +12,20 @@ function ensureDir() {
 }
 ensureDir();
 
+function updateIndex(metadata) {
+    const indexPath = path.join(DATA_DIR, 'index.json');
+    let index = [];
+    try {
+        if (fs.existsSync(indexPath)) {
+            index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+        }
+    } catch { index = []; }
+    index.unshift(metadata);
+    // Keep index at reasonable size
+    if (index.length > 1000) index = index.slice(0, 1000);
+    fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
+}
+
 /**
  * Save a completed debate to disk.
  * @param {Object} debateData - { topic, provider, model, phases, timestamp }
@@ -32,6 +46,7 @@ function saveDebate(debateData) {
     };
     const filePath = path.join(DATA_DIR, `${id}.json`);
     fs.writeFileSync(filePath, JSON.stringify(record, null, 2));
+    updateIndex({ id, topic: record.topic, timestamp: record.timestamp, provider: record.provider, model: record.model, userId: record.userId, workspaceId: record.workspaceId });
     return id;
 }
 
@@ -58,9 +73,21 @@ function getDebate(id) {
  * @returns {Array}
  */
 function listRecent(limit = 20) {
+    const indexPath = path.join(DATA_DIR, 'index.json');
+    try {
+        if (fs.existsSync(indexPath)) {
+            const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+            return index.slice(0, limit);
+        }
+    } catch { }
+    // Fallback: scan files if index.json missing
+    return listRecentFallback(limit);
+}
+
+function listRecentFallback(limit = 20) {
     ensureDir();
     const files = fs.readdirSync(DATA_DIR)
-        .filter(f => f.endsWith('.json'))
+        .filter(f => f.endsWith('.json') && f !== 'index.json')
         .map(f => {
             const filePath = path.join(DATA_DIR, f);
             try {

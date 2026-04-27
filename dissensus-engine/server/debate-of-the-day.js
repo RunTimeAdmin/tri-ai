@@ -4,8 +4,6 @@
 // Server timezone configurable via DEBATE_OF_THE_DAY_TZ
 // ============================================================
 
-const https = require('https');
-
 const COINGECKO_URL = 'https://api.coingecko.com/api/v3/search/trending';
 const FALLBACK_TOPICS = [
   'Is Bitcoin a good store of value in 2025?',
@@ -34,27 +32,30 @@ function getDateKey() {
   }
 }
 
-function fetchTrending() {
-  return new Promise((resolve, reject) => {
-    https.get(COINGECKO_URL, (res) => {
-      let data = '';
-      res.on('data', chunk => { data += chunk; });
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          const coins = json.coins || [];
-          const top = coins[0]?.item;
-          if (top?.name && top?.symbol) {
-            resolve(`Is ${top.name} (${top.symbol}) worth buying right now? — Trending #1 on CoinGecko`);
-          } else {
-            resolve(null);
-          }
-        } catch (e) {
-          resolve(null);
+async function fetchTrending() {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+        const res = await fetch(COINGECKO_URL, {
+            signal: controller.signal,
+            headers: { 'User-Agent': 'Dissensus-Engine/1.0' }
+        });
+        clearTimeout(timeout);
+
+        const contentLength = parseInt(res.headers.get('content-length') || '0', 10);
+        if (contentLength > 102400) return null;
+
+        const json = await res.json();
+        const coins = json.coins || [];
+        const top = coins[0]?.item;
+        if (top?.name && top?.symbol) {
+            return `Is ${top.name} (${top.symbol}) worth buying right now? — Trending #1 on CoinGecko`;
         }
-      });
-    }).on('error', () => resolve(null));
-  });
+        return null;
+    } catch {
+        clearTimeout(timeout);
+        return null;
+    }
 }
 
 function getFallbackTopic() {

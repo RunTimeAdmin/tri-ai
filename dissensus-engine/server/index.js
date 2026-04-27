@@ -8,13 +8,14 @@ const express = require('express');
 const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
 const { DebateEngine, PROVIDERS } = require('./debate-engine');
 const { generateCard, summarizeVerdictForCard } = require('./card-generator');
 const { getDebateOfTheDay } = require('./debate-of-the-day');
 const { recordDebate, recordError, getPublicMetrics, getRecentTopics } = require('./metrics');
 const { saveDebate, getDebate, listRecent } = require('./debate-store');
 const { formatDebateJSON, generateDebatePDF } = require('./debate-export');
-const { registerUser, loginUser, getUser, authMiddleware, optionalAuth } = require('./auth');
+const { registerUser, loginUser, getUser, authMiddleware, optionalAuth, csrfProtection } = require('./auth');
 const { createWorkspace, getWorkspace, getUserWorkspaces } = require('./workspace');
 
 const app = express();
@@ -59,9 +60,21 @@ function sanitizeTopic(topic) {
 // Middleware
 // ----------------------------------------------------------
 app.use(helmet({
-  contentSecurityPolicy: false, // Disable — blocks onclick/onchange and external scripts
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      imgSrc: ["'self'", "data:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"]
+    }
+  },
   crossOriginEmbedderPolicy: false
 }));
+app.use(cookieParser());
 app.use(express.json({ limit: '50kb' })); // 50kb for card payload (verdict can be long)
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
@@ -72,6 +85,22 @@ const debateLimiter = rateLimit({
   message: { error: 'Too many debates. Please wait a minute and try again.' },
   standardHeaders: true,
   legacyHeaders: false
+});
+
+const authLoginLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 5,
+    message: { error: 'Too many login attempts. Please wait a minute.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+const authRegisterLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 3,
+    message: { error: 'Too many registration attempts. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false
 });
 
 // ----------------------------------------------------------
@@ -218,32 +247,55 @@ app.post('/api/debate/validate', async (req, res) => {
 });
 
 // ── Auth Routes ───────────────────────────────────────────────
-app.post('/api/auth/register', async (req, res) => {
-    try {
-        const { email, password, name } = req.body;
-        const user = await registerUser(email, password, name);
-        // Auto-create personal workspace
-        createWorkspace(`${user.name}'s Workspace`, user.id);
-        res.status(201).json({ ok: true, user });
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
+function setAuthCookies(res, token, csrfToken) {
+    res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+    res.cookie('csrf_token', csrfToken, {
+        httpOnly: false, // JS needs to read this
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+}
+
+app.post('/api/auth/register', authRegisterLimiter, async (req, res) => {
+    const { email, password, name } = req.body;
+    const result = await registerUser(email, password, name);
+    if (result.error) return res.status(400).json({ error: result.error });
+    setAuthCookies(res, result.token, result.csrfToken);
+    res.status(201).json({ ok: true, user: result.user, csrfToken: result.csrfToken });
 });
 
-app.post('/api/auth/login', async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        const result = await loginUser(email, password);
-        res.json(result);
-    } catch (err) {
-        res.status(401).json({ error: err.message });
-    }
+app.post('/api/auth/login', authLoginLimiter, async (req, res) => {
+    const { email, password } = req.body;
+    const result = await loginUser(email, password);
+    if (result.error) return res.status(401).json({ error: result.error });
+    setAuthCookies(res, result.token, result.csrfToken);
+    res.json({ user: result.user, csrfToken: result.csrfToken });
+});
+
+app.post('/api/auth/logout', csrfProtection, (req, res) => {
+    res.clearCookie('token', { path: '/' });
+    res.clearCookie('csrf_token', { path: '/' });
+    res.json({ ok: true });
 });
 
 app.get('/api/auth/me', authMiddleware, (req, res) => {
     const user = getUser(req.user.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json(user);
+    // Refresh cookies on activity
+    const token = req.cookies?.token;
+    const csrfToken = req.cookies?.csrf_token;
+    if (token && csrfToken) {
+        setAuthCookies(res, token, csrfToken);
+    }
+    res.json({ user });
 });
 
 // ── Workspace Routes ──────────────────────────────────────────
@@ -252,7 +304,7 @@ app.get('/api/workspaces', authMiddleware, (req, res) => {
     res.json(workspaces);
 });
 
-app.post('/api/workspaces', authMiddleware, (req, res) => {
+app.post('/api/workspaces', authMiddleware, csrfProtection, (req, res) => {
     try {
         const { name } = req.body;
         if (!name || !name.trim()) return res.status(400).json({ error: 'Workspace name required' });
@@ -355,10 +407,11 @@ app.get('/api/debate/stream', debateLimiter, optionalAuth, async (req, res) => {
     }
   }
   
+  const PERSIST_EVENTS = new Set(['phase-start', 'agent-done', 'phase-done', 'debate-done']);
   const sendEvent = (type, data) => {
-    // Accumulate for persistence
-    debateRecord.phases.push({ type, ...data });
-    // Send to client
+    if (PERSIST_EVENTS.has(type)) {
+      debateRecord.phases.push({ type, ...data });
+    }
     try {
       res.write(`data: ${JSON.stringify({ type, ...data })}\n\n`);
     } catch (e) {
@@ -367,12 +420,13 @@ app.get('/api/debate/stream', debateLimiter, optionalAuth, async (req, res) => {
   };
 
   let aborted = false;
-  req.on('close', () => { aborted = true; });
+  const disconnectController = new AbortController();
+  req.on('close', () => { aborted = true; disconnectController.abort(); });
 
   try {
     await engine.runDebate(topicTrimmed, (type, data) => {
       if (!aborted) sendEvent(type, data);
-    });
+    }, disconnectController.signal);
 
     if (!aborted) {
       recordDebate(topicTrimmed, providerName, modelId);
@@ -390,7 +444,15 @@ app.get('/api/debate/stream', debateLimiter, optionalAuth, async (req, res) => {
   }
 });
 
-app.get('/api/debates/recent', (req, res) => {
+const recentLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: isProd ? 30 : 100,
+    message: { error: 'Too many requests. Please wait.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+app.get('/api/debates/recent', recentLimiter, (req, res) => {
     const limit = Math.min(parseInt(req.query.limit) || 20, 50);
     res.json(listRecent(limit));
 });

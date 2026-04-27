@@ -40,11 +40,11 @@
     </div>
 
     <div class="auth-controls">
-        <button id="loginBtn" class="btn btn-outline" onclick="showAuthModal('login')">Sign In</button>
+        <button id="loginBtn" class="btn btn-outline">Sign In</button>
         <div id="userMenu" style="display:none;" class="user-menu">
             <span id="userName"></span>
-            <button class="btn btn-outline btn-sm" onclick="showMyDebates()">My Debates</button>
-            <button class="btn btn-outline btn-sm" onclick="logout()">Logout</button>
+            <button id="btn-my-debates" class="btn btn-outline btn-sm">My Debates</button>
+            <button id="btn-logout" class="btn btn-outline btn-sm">Logout</button>
         </div>
     </div>
 </header>
@@ -61,7 +61,7 @@
         <div class="input-row provider-row" style="margin-bottom: 1rem;">
             <div class="input-group">
                 <label>Provider</label>
-                <select id="providerSelect" onchange="updateModels()">
+                <select id="providerSelect">
                     <option value="deepseek">🔥 DeepSeek (Cheapest)</option>
                     <option value="gemini">⚡ Google Gemini (Free Tier!)</option>
                     <option value="openai">🧠 OpenAI</option>
@@ -76,26 +76,26 @@
         </div>
 
         <label class="mix-toggle">
-            <input type="checkbox" id="mixModels" onchange="toggleMixMode()">
+            <input type="checkbox" id="mixModels">
             <span>Mix Models (assign different AI to each agent)</span>
         </label>
 
         <div class="debate-of-the-day" id="debateOfTheDay">
                 <span class="dotd-badge">📅 Debate of the Day</span>
                 <span class="dotd-topic" id="dotdTopic">Loading…</span>
-                <button class="btn-dotd" id="dotdBtn" onclick="useDebateOfTheDay()" disabled>Start this debate</button>
+                <button class="btn-dotd" id="dotdBtn" disabled>Start this debate</button>
             </div>
         <div class="topic-input-wrapper">
             <div class="input-group">
                 <label>Debate Topic</label>
                 <input type="text" id="topicInput" maxlength="500" placeholder="e.g. Is Ethereum a good investment in 2025? / Should AI be regulated? / Bitcoin vs Gold...">
                 <div class="topic-suggestions">
-                    <span class="topic-chip" onclick="setTopic('Is Bitcoin a good store of value?')">Bitcoin</span>
-                    <span class="topic-chip" onclick="setTopic('Should AI be regulated by governments?')">AI Regulation</span>
-                    <span class="topic-chip" onclick="setTopic('Ethereum vs Solana: which will win?')">ETH vs SOL</span>
+                    <span class="topic-chip" data-action="setTopic" data-topic="Is Bitcoin a good store of value?">Bitcoin</span>
+                    <span class="topic-chip" data-action="setTopic" data-topic="Should AI be regulated by governments?">AI Regulation</span>
+                    <span class="topic-chip" data-action="setTopic" data-topic="Ethereum vs Solana: which will win?">ETH vs SOL</span>
                 </div>
             </div>
-            <button class="btn-debate" id="startBtn" onclick="startDebate()">
+            <button class="btn-debate" id="startBtn">
                 <span id="btnText">⚡ Start Debate</span>
                 <div class="spinner hidden" id="btnSpinner"></div>
             </button>
@@ -139,7 +139,7 @@
                         <div class="agent-role">The Skeptic</div>
                     </div>
                     <div class="agent-model-select" style="display:none;">
-                        <select class="agent-provider-select" data-agent="cipher" onchange="updateAgentModels('cipher')">
+                        <select class="agent-provider-select" data-agent="cipher" data-action="updateAgentModels">
                             <option value="deepseek">DeepSeek</option>
                             <option value="gemini">Gemini</option>
                             <option value="openai">OpenAI</option>
@@ -165,7 +165,7 @@
                         <div class="agent-role">The Advocate</div>
                     </div>
                     <div class="agent-model-select" style="display:none;">
-                        <select class="agent-provider-select" data-agent="nova" onchange="updateAgentModels('nova')">
+                        <select class="agent-provider-select" data-agent="nova" data-action="updateAgentModels">
                             <option value="deepseek">DeepSeek</option>
                             <option value="gemini">Gemini</option>
                             <option value="openai">OpenAI</option>
@@ -191,7 +191,7 @@
                         <div class="agent-role">The Synthesizer</div>
                     </div>
                     <div class="agent-model-select" style="display:none;">
-                        <select class="agent-provider-select" data-agent="prism" onchange="updateAgentModels('prism')">
+                        <select class="agent-provider-select" data-agent="prism" data-action="updateAgentModels">
                             <option value="deepseek">DeepSeek</option>
                             <option value="gemini">Gemini</option>
                             <option value="openai">OpenAI</option>
@@ -216,10 +216,10 @@
             <span style="font-size: 1.5rem;">🏛️</span>
             <h2>DISSENSUS VERDICT</h2>
             <div class="verdict-actions">
-                <button class="btn-copy-verdict" id="copyVerdictBtn" onclick="copyVerdict()" title="Copy to clipboard">📋 Copy</button>
-                <button class="btn-share-card" id="shareCardBtn" onclick="shareCard()" title="Download shareable card for Twitter">🖼️ Share Card</button>
-                <button class="btn-export-json" id="exportJsonBtn" onclick="exportJSON()" title="Download structured JSON">📄 Export JSON</button>
-                <button class="btn-export-pdf" id="exportPdfBtn" onclick="exportPDF()" title="Download PDF report">📕 Export PDF</button>
+                <button class="btn-copy-verdict" id="copyVerdictBtn" title="Copy to clipboard">📋 Copy</button>
+                <button class="btn-share-card" id="shareCardBtn" title="Download shareable card for Twitter">🖼️ Share Card</button>
+                <button class="btn-export-json" id="exportJsonBtn" title="Download structured JSON">📄 Export JSON</button>
+                <button class="btn-export-pdf" id="exportPdfBtn" title="Download PDF report">📕 Export PDF</button>
                 <button id="shareDebate" style="display:none;" class="btn btn-secondary">Share Debate</button>
             </div>
         </div>
@@ -231,12 +231,12 @@
 <script src="js/auth.js"></script>
 <script src="js/app.js"></script>
 
-<div id="authModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeAuthModal()">
+<div id="authModal" class="modal-overlay" style="display:none;">
     <div class="modal-content auth-modal">
-        <button class="modal-close" onclick="closeAuthModal()">&times;</button>
+        <button id="authModalClose" class="modal-close">&times;</button>
         <div class="auth-tabs">
-            <button class="auth-tab active" data-tab="login" onclick="switchAuthTab('login')">Sign In</button>
-            <button class="auth-tab" data-tab="register" onclick="switchAuthTab('register')">Sign Up</button>
+            <button class="auth-tab active" data-tab="login" data-action="switchAuthTab">Sign In</button>
+            <button class="auth-tab" data-tab="register" data-action="switchAuthTab">Sign Up</button>
         </div>
         <div id="loginForm">
             <form id="loginFormEl">
@@ -276,7 +276,7 @@
 <div id="myDebatesPanel" class="my-debates-panel" style="display:none;">
     <div class="my-debates-header">
         <h3>My Debates</h3>
-        <button class="modal-close" onclick="closeMyDebates()">&times;</button>
+        <button id="myDebatesClose" class="modal-close">&times;</button>
     </div>
     <div id="myDebatesList" class="my-debates-list"></div>
 </div>

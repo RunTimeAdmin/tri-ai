@@ -10,10 +10,21 @@
 - [dissensus-nginx-ssl.conf](file://dissensus-engine/docs/configs/dissensus-nginx-ssl.conf)
 - [deploy-env-to-vps.ps1](file://dissensus-engine/deploy-env-to-vps.ps1)
 - [DEPLOY-GIT.md](file://dissensus-engine/DEPLOY-GIT.md)
+- [Dockerfile](file://dissensus-engine/Dockerfile)
+- [docker-compose.yml](file://dissensus-engine/docker-compose.yml)
+- [.dockerignore](file://dissensus-engine/.dockerignore)
 - [index.js](file://dissensus-engine/server/index.js)
 - [package.json](file://dissensus-engine/package.json)
 - [README.md](file://dissensus-engine/README.md)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Added comprehensive Docker containerization support documentation
+- Updated deployment options to include Docker as a production-ready alternative
+- Added Dockerfile, docker-compose.yml, and .dockerignore configuration details
+- Enhanced deployment flexibility with containerized deployment options
+- Updated architecture diagrams to reflect containerized deployment scenarios
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -21,14 +32,15 @@
 3. [Core Components](#core-components)
 4. [Architecture Overview](#architecture-overview)
 5. [Detailed Component Analysis](#detailed-component-analysis)
-6. [Dependency Analysis](#dependency-analysis)
-7. [Performance Considerations](#performance-considerations)
-8. [Troubleshooting Guide](#troubleshooting-guide)
-9. [Conclusion](#conclusion)
-10. [Appendices](#appendices)
+6. [Docker Containerization](#docker-containerization)
+7. [Dependency Analysis](#dependency-analysis)
+8. [Performance Considerations](#performance-considerations)
+9. [Troubleshooting Guide](#troubleshooting-guide)
+10. [Conclusion](#conclusion)
+11. [Appendices](#appendices)
 
 ## Introduction
-This document provides comprehensive deployment and operations guidance for the Dissensus AI Debate Engine across development and production environments. It covers VPS deployment using the included PowerShell automation, nginx reverse proxy configuration, systemd service management, SSL certificate setup with Let’s Encrypt, environment variable configuration, reverse proxy and security hardening, automated deployment pipelines, monitoring and log management, performance tuning, scaling, backups, disaster recovery, and troubleshooting. It also explains the relationship between development, staging, and production deployment targets.
+This document provides comprehensive deployment and operations guidance for the Dissensus AI Debate Engine across development and production environments. It covers VPS deployment using the included PowerShell automation, nginx reverse proxy configuration, systemd service management, SSL certificate setup with Let's Encrypt, environment variable configuration, reverse proxy and security hardening, automated deployment pipelines, monitoring and log management, performance tuning, scaling, backups, disaster recovery, and troubleshooting. It also explains the relationship between development, staging, and production deployment targets, and now includes comprehensive Docker containerization support for production-ready deployment options.
 
 ## Project Structure
 The deployment-related materials are primarily located under the dissensus-engine module and its docs/configs directory. The key elements include:
@@ -38,6 +50,7 @@ The deployment-related materials are primarily located under the dissensus-engin
 - Nginx configuration templates for reverse proxy and SSL
 - A systemd unit file for service lifecycle management
 - Git-based deployment instructions for continuous updates
+- Docker containerization support with Dockerfile, docker-compose.yml, and .dockerignore
 - The Node.js server implementation that exposes SSE streaming and API endpoints
 
 ```mermaid
@@ -45,6 +58,7 @@ graph TB
 subgraph "Local Developer Workstation"
 PS["PowerShell Script<br/>deploy-env-to-vps.ps1"]
 Repo["Git Repository<br/>tri-ai"]
+DockerCompose["Docker Compose<br/>docker-compose.yml"]
 end
 subgraph "Production VPS"
 Sysd["systemd Unit<br/>dissensus.service"]
@@ -52,11 +66,19 @@ Node["Node.js Server<br/>index.js"]
 Nginx["Nginx Reverse Proxy<br/>nginx-dissensus.conf / dissensus-nginx-ssl.conf"]
 SSL["Let's Encrypt Certificate"]
 end
+subgraph "Containerized Deployment"
+Dockerfile["Dockerfile<br/>Container Definition"]
+DockerImage["Docker Image<br/>Production Ready"]
+DockerVolume["Volume Mounts<br/>data:/app/data"]
+end
 PS --> Repo
 Repo --> Sysd
 Sysd --> Node
 Nginx --> Node
 SSL --> Nginx
+DockerCompose --> Dockerfile
+Dockerfile --> DockerImage
+DockerVolume --> DockerImage
 ```
 
 **Diagram sources**
@@ -65,18 +87,24 @@ SSL --> Nginx
 - [index.js:1-481](file://dissensus-engine/server/index.js#L1-L481)
 - [nginx-dissensus.conf:1-81](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L1-L81)
 - [dissensus-nginx-ssl.conf:1-68](file://dissensus-engine/docs/configs/dissensus-nginx-ssl.conf#L1-L68)
+- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
+- [.dockerignore:1-8](file://dissensus-engine/.dockerignore#L1-L8)
 
 **Section sources**
 - [README.md:110-134](file://dissensus-engine/README.md#L110-L134)
 - [DEPLOY-VPS.md:1-25](file://dissensus-engine/docs/DEPLOY-VPS.md#L1-L25)
+- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
 
 ## Core Components
 - Node.js server (Express) with SSE streaming for real-time debates
 - Nginx reverse proxy with security headers, gzip compression, static asset caching, and SSE-specific streaming configuration
 - systemd service for process management, auto-start, and resilience
-- SSL termination via Certbot/Let’s Encrypt
+- SSL termination via Certbot/Let's Encrypt
 - Environment-driven configuration for providers, staking enforcement, and reverse proxy trust
 - Automated deployment via PowerShell and Git pull
+- **New**: Docker containerization with production-ready image building and volume management
 
 **Section sources**
 - [index.js:26-56](file://dissensus-engine/server/index.js#L26-L56)
@@ -86,9 +114,11 @@ SSL --> Nginx
 - [dissensus.service:1-27](file://dissensus-engine/docs/configs/dissensus.service#L1-L27)
 - [dissensus-nginx-ssl.conf:21-57](file://dissensus-engine/docs/configs/dissensus-nginx-ssl.conf#L21-L57)
 - [README.md:136-151](file://dissensus-engine/README.md#L136-L151)
+- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
 
 ## Architecture Overview
-The production architecture uses Nginx as a reverse proxy terminating TLS, applying security headers, compressing responses, and serving static assets. Nginx forwards API and SSE traffic to the Node.js server on localhost. The systemd service manages the Node.js process, ensuring it starts on boot and restarts on failure. SSL certificates are provisioned and renewed automatically via Certbot.
+The production architecture uses Nginx as a reverse proxy terminating TLS, applying security headers, compressing responses, and serving static assets. Nginx forwards API and SSE traffic to the Node.js server on localhost. The systemd service manages the Node.js process, ensuring it starts on boot and restarts on failure. SSL certificates are provisioned and renewed automatically via Certbot. **New**: Docker containerization provides an alternative deployment model with standardized container images, volume management, and simplified orchestration.
 
 ```mermaid
 graph TB
@@ -97,9 +127,13 @@ CF["Cloudflare / CDN (Optional)"]
 Nginx["Nginx (Reverse Proxy)<br/>TLS, Headers, Compression, Static Assets"]
 Node["Node.js Server (Express)<br/>SSE Streaming, APIs"]
 Providers["AI Providers<br/>DeepSeek / Gemini / OpenAI"]
+Docker["Docker Container<br/>Production Ready"]
+DockerVolume["Volume Mounts<br/>Persistent Data"]
 Internet --> CF --> Nginx
 Nginx --> Node
 Node --> Providers
+Docker --> Node
+DockerVolume --> Docker
 ```
 
 **Diagram sources**
@@ -107,11 +141,13 @@ Node --> Providers
 - [nginx-dissensus.conf:1-81](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L1-L81)
 - [dissensus-nginx-ssl.conf:1-68](file://dissensus-engine/docs/configs/dissensus-nginx-ssl.conf#L1-L68)
 - [index.js:220-311](file://dissensus-engine/server/index.js#L220-L311)
+- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
 
 ## Detailed Component Analysis
 
 ### VPS Deployment with PowerShell (.env Automation)
-- Purpose: Automate uploading a local .env file to the VPS and validate placeholders before transfer.
+- Purpose: Automate uploading a local .env file to a VPS and validate placeholders before transfer.
 - Behavior:
   - Creates .env from .env.example if missing locally.
   - Prompts for editing if placeholders are detected.
@@ -171,7 +207,7 @@ NextSteps --> End(["Complete"])
 - [setup-vps.sh:1-247](file://dissensus-engine/docs/configs/setup-vps.sh#L1-L247)
 
 ### Manual VPS Deployment (Step-by-Step Guide)
-- Covers prerequisites, connecting to VPS, initial setup, installing Node.js, deploying the engine, configuring environment variables, creating a systemd service, installing and configuring Nginx, setting up SSL with Let’s Encrypt, pointing domains, firewall configuration, verification, maintenance, and troubleshooting.
+- Covers prerequisites, connecting to VPS, initial setup, installing Node.js, deploying the engine, configuring environment variables, creating a systemd service, installing and configuring Nginx, setting up SSL with Let's Encrypt, pointing domains, firewall configuration, verification, maintenance, and troubleshooting.
 
 ```mermaid
 flowchart TD
@@ -271,7 +307,7 @@ class DissensusService {
 **Section sources**
 - [dissensus.service:1-27](file://dissensus-engine/docs/configs/dissensus.service#L1-L27)
 
-### SSL Certificate Setup with Let’s Encrypt
+### SSL Certificate Setup with Let's Encrypt
 - Purpose: Provision and automate renewal of free TLS certificates for the subdomain.
 - Behavior:
   - Install Certbot with Nginx plugin.
@@ -297,7 +333,7 @@ Certbot-->>Admin : Confirm renewal setup
 
 **Section sources**
 - [DEPLOY-VPS.md:389-412](file://dissensus-engine/docs/DEPLOY-VPS.md#L389-L412)
-- [dissensus-nginx-ssl.conf:51-57](file://dissensus-engine/docs/configs/dissensus-ssl.conf#L51-L57)
+- [dissensus-nginx-ssl.conf:51-57](file://dissensus-engine/docs/configs/dissensus-nginx-ssl.conf#L51-L57)
 
 ### Environment Variable Configuration
 - Purpose: Control runtime behavior including provider keys, staking enforcement, reverse proxy trust, and Solana settings.
@@ -418,9 +454,99 @@ Verify --> SSE["Watch SSE stream"]
 - Staging:
   - Similar to production but with reduced scale and possibly self-signed or staging certificates.
 - Production:
-  - Nginx reverse proxy, systemd service, Let’s Encrypt SSL, firewall hardening, and automated deployments.
+  - Nginx reverse proxy, systemd service, Let's Encrypt SSL, firewall hardening, and automated deployments.
+- **New**: Containerized deployment:
+  - Docker containerization provides standardized production deployment with volume management and orchestration.
 
 [No sources needed since this section provides conceptual guidance]
+
+## Docker Containerization
+
+### Dockerfile Configuration
+The Dockerfile provides a production-ready container definition for the Dissensus AI Debate Engine:
+
+- **Base Image**: Node.js 20 slim image for minimal footprint
+- **Working Directory**: /app with proper layer caching strategy
+- **Dependency Installation**: Optimized two-stage build process
+- **Application Setup**: Complete source copy with debate data directory creation
+- **Port Exposure**: Standard 3000 port for the Node.js server
+- **Entry Point**: Direct execution of the Node.js server
+
+```mermaid
+flowchart TD
+Dockerfile["Dockerfile"] --> Base["FROM node:20-slim"]
+Base --> Workdir["WORKDIR /app"]
+Workdir --> CopyPkg["COPY package*.json"]
+CopyPkg --> InstallDeps["RUN npm install --production"]
+InstallDeps --> CopySrc["COPY . ."]
+CopySrc --> CreateData["RUN mkdir -p /app/data/debates"]
+CreateData --> ExposePort["EXPOSE 3000"]
+ExposePort --> Cmd["CMD [\"node\", \"server/index.js\"]"]
+```
+
+**Diagram sources**
+- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+
+**Section sources**
+- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+
+### Docker Compose Orchestration
+The docker-compose.yml defines a production-ready service configuration:
+
+- **Service Definition**: dissensus-engine with build context from current directory
+- **Port Mapping**: 3000:3000 for container exposure
+- **Environment Management**: Uses .env file for configuration
+- **Volume Persistence**: Maps ./data to /app/data for persistent storage
+- **Container Lifecycle**: Automatic restart policy for reliability
+
+```mermaid
+flowchart TD
+Compose["docker-compose.yml"] --> Service["dissensus-engine service"]
+Service --> Build["build context: ."]
+Service --> Ports["ports: 3000:3000"]
+Service --> EnvFile[".env file integration"]
+Service --> Volume["./data:/app/data"]
+Service --> Restart["unless-stopped policy"]
+```
+
+**Diagram sources**
+- [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
+
+**Section sources**
+- [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
+
+### Docker Ignore Configuration
+The .dockerignore file optimizes build performance and security:
+
+- **Node Modules**: Excludes installed dependencies from build context
+- **Environment Files**: Prevents accidental exposure of sensitive configuration
+- **Version Control**: Ignores .git metadata and history
+- **Documentation**: Excludes README files and documentation directories
+- **Archives**: Prevents .zip files from being included
+- **Data Directory**: Excludes local data directory for container persistence
+
+**Section sources**
+- [.dockerignore:1-8](file://dissensus-engine/.dockerignore#L1-L8)
+
+### Containerized Deployment Benefits
+- **Consistency**: Standardized environment across development and production
+- **Isolation**: Clean separation of application dependencies
+- **Scalability**: Easy horizontal scaling with container orchestration platforms
+- **Persistence**: Volume mounts ensure data survives container recreation
+- **Security**: Reduced attack surface with minimal base image
+- **Portability**: Self-contained deployment units
+
+### Container Deployment Options
+- **Local Development**: docker-compose up for isolated development environment
+- **Production Deployment**: Kubernetes, Docker Swarm, or standalone container deployment
+- **Volume Management**: Persistent data storage through mounted volumes
+- **Environment Configuration**: External .env file integration for sensitive configuration
+- **Scaling**: Horizontal scaling through container replicas and load balancing
+
+**Section sources**
+- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
+- [.dockerignore:1-8](file://dissensus-engine/.dockerignore#L1-L8)
 
 ## Dependency Analysis
 - Node.js server depends on:
@@ -435,6 +561,10 @@ Verify --> SSE["Watch SSE stream"]
 - Systemd depends on:
   - Correct ExecStart path and EnvironmentFile.
   - Proper permissions and working directory.
+- **New**: Docker containerization adds:
+  - Container runtime dependencies and orchestration requirements.
+  - Volume mount dependencies for persistent data storage.
+  - Network configuration for container communication.
 
 ```mermaid
 graph LR
@@ -444,16 +574,22 @@ Node --> APIs["API Endpoints"]
 Nginx["Nginx"] --> Node
 SSL["Let's Encrypt"] --> Nginx
 Sysd["systemd"] --> Node
+Docker["Docker Runtime"] --> Node
+Volumes["Volume Mounts"] --> Docker
 ```
 
 **Diagram sources**
 - [index.js:6-28](file://dissensus-engine/server/index.js#L6-L28)
 - [nginx-dissensus.conf:42-81](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L42-L81)
 - [dissensus.service:10-18](file://dissensus-engine/docs/configs/dissensus.service#L10-L18)
+- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [docker-compose.yml:9-11](file://dissensus-engine/docker-compose.yml#L9-L11)
 
 **Section sources**
 - [package.json:10-27](file://dissensus-engine/package.json#L10-L27)
 - [index.js:6-28](file://dissensus-engine/server/index.js#L6-L28)
+- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
 
 ## Performance Considerations
 - SSE streaming:
@@ -465,6 +601,10 @@ Sysd["systemd"] --> Node
   - Monitor memory and CPU; add swap if needed on constrained VPS instances.
 - Provider selection:
   - Choose providers/models based on cost/performance trade-offs.
+- **New**: Container performance:
+  - Optimize container resource limits and memory allocation.
+  - Use appropriate container registry and image caching strategies.
+  - Implement health checks and graceful shutdown handling.
 
 [No sources needed since this section provides general guidance]
 
@@ -482,12 +622,19 @@ Common issues and resolutions:
   - Add swap space and monitor memory usage.
 - Port changes:
   - Update systemd and Nginx proxy_pass to match the new port.
+- **New**: Docker container issues:
+  - Check container logs with docker logs <container-id>.
+  - Verify volume mounts are accessible and have proper permissions.
+  - Ensure environment variables are properly passed to the container.
+  - Confirm network connectivity between containers if using compose services.
 
 **Section sources**
 - [DEPLOY-VPS.md:601-690](file://dissensus-engine/docs/DEPLOY-VPS.md#L601-L690)
+- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
 
 ## Conclusion
-The Dissensus AI Debate Engine is designed for straightforward deployment on a VPS with Nginx, systemd, and SSL automation. The included PowerShell and shell scripts streamline environment configuration and initial provisioning. By following the documented steps for reverse proxy, security hardening, monitoring, and troubleshooting, teams can operate reliable development, staging, and production environments with predictable upgrades and minimal downtime.
+The Dissensus AI Debate Engine is designed for straightforward deployment on a VPS with Nginx, systemd, and SSL automation. The included PowerShell and shell scripts streamline environment configuration and initial provisioning. **Updated**: With the addition of comprehensive Docker containerization support, teams now have multiple deployment options including traditional VPS deployment, containerized deployment, and hybrid approaches. The Dockerfile, docker-compose.yml, and .dockerignore files provide production-ready containerization with optimized build processes, volume management, and orchestration capabilities. By following the documented steps for reverse proxy, security hardening, monitoring, troubleshooting, and containerized deployment, teams can operate reliable development, staging, and production environments with predictable upgrades and minimal downtime.
 
 [No sources needed since this section summarizes without analyzing specific files]
 
@@ -501,12 +648,37 @@ The Dissensus AI Debate Engine is designed for straightforward deployment on a V
 - Renew SSL: certbot renew
 - Check firewall: ufw status
 - Disk/memory/CPU: df -h, free -h, htop
+- **New**: Docker commands:
+  - Build container: docker build -t dissensus-engine .
+  - Run container: docker run -p 3000:3000 --env-file .env dissensus-engine
+  - Compose up: docker-compose up -d
+  - View logs: docker-compose logs -f dissensus-engine
+  - Stop containers: docker-compose down
 
 **Section sources**
 - [DEPLOY-VPS.md:693-708](file://dissensus-engine/docs/DEPLOY-VPS.md#L693-L708)
+- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
 
 ### Appendix B: Environment Variables Reference
 - PORT, SOLANA_RPC_URL, DISS_TOKEN_MINT, SOLANA_CLUSTER, DISS_STAKING_PROGRAM_ID, TRUST_PROXY, TRUST_PROXY_HOPS
+- **New**: Docker-specific considerations:
+  - Environment variables can be passed via .env file or docker-compose.yml
+  - Volume mounts for persistent data storage
+  - Container networking and port mapping configuration
 
 **Section sources**
 - [README.md:136-151](file://dissensus-engine/README.md#L136-L151)
+- [docker-compose.yml:7-11](file://dissensus-engine/docker-compose.yml#L7-L11)
+
+### Appendix C: Docker Configuration Reference
+- **Dockerfile**: Production-ready Node.js 20 slim image with optimized build process
+- **docker-compose.yml**: Service definition with port mapping, volume mounts, and restart policies
+- **.dockerignore**: Build optimization and security configuration
+- **Volume Management**: Persistent data storage through mounted volumes
+- **Environment Integration**: External .env file support for configuration management
+
+**Section sources**
+- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
+- [.dockerignore:1-8](file://dissensus-engine/.dockerignore#L1-L8)

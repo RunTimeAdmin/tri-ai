@@ -63,7 +63,7 @@ class DebateEngine {
   // ----------------------------------------------------------
   // Core AI Call — Streams response chunks via callback
   // ----------------------------------------------------------
-  async callAgent(agentId, messages, onChunk) {
+  async callAgent(agentId, messages, onChunk, signal = null) {
     let baseUrl, apiKey, model, authHeader, providerName;
 
     if (this.perAgentMode && this.agentConfigs[agentId]) {
@@ -91,12 +91,19 @@ class DebateEngine {
     ];
 
     // Abort controller for per-call timeout (90 seconds)
-    const callTimeout = new AbortController();
-    const timeoutId = setTimeout(() => callTimeout.abort(), 90000);
+    const callController = new AbortController();
+    const timeout = setTimeout(() => callController.abort(), 90000);
 
-    let response;
+    // If parent signal aborts, abort this call too
+    const onParentAbort = () => callController.abort();
+    if (signal) {
+      if (signal.aborted) { clearTimeout(timeout); callController.abort(); }
+      else signal.addEventListener('abort', onParentAbort, { once: true });
+    }
+
+    let fullText = '';
     try {
-      response = await fetch(baseUrl, {
+      const response = await fetch(baseUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -109,43 +116,47 @@ class DebateEngine {
           temperature: 0.8,
           max_tokens: 1000
         }),
-        signal: callTimeout.signal
+        signal: callController.signal
       });
-    } finally {
-      clearTimeout(timeoutId);
-    }
 
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`${providerName} API error (${response.status}): ${err}`);
-    }
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`${providerName} API error (${response.status}): ${err}`);
+      }
 
-    let fullText = '';
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
 
-      for (const line of lines) {
-        const data = line.slice(6).trim();
-        if (data === '[DONE]') continue;
+        for (const line of lines) {
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
 
-        try {
-          const parsed = JSON.parse(data);
-          const content = parsed.choices?.[0]?.delta?.content;
-          if (content) {
-            fullText += content;
-            if (onChunk) onChunk(content);
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              fullText += content;
+              if (onChunk) onChunk(content);
+            }
+          } catch (e) {
+            // Skip malformed chunks
           }
-        } catch (e) {
-          // Skip malformed chunks
         }
       }
+
+      clearTimeout(timeout);
+    } catch (error) {
+      clearTimeout(timeout);
+      throw error;
+    } finally {
+      if (signal) signal.removeEventListener('abort', onParentAbort);
     }
 
     return fullText;
@@ -154,7 +165,7 @@ class DebateEngine {
   // ----------------------------------------------------------
   // Run Full 4-Phase Debate
   // ----------------------------------------------------------
-  async runDebate(topic, sendEvent) {
+  async runDebate(topic, sendEvent, signal = null) {
     const debateContext = {
       topic,
       phase1: {},
@@ -188,17 +199,22 @@ Be specific and substantive. Reference real-world data, trends, or precedents wh
     // Run all 3 agents in parallel for Phase 1
     const phase1Results = await Promise.all(
       ['cipher', 'nova', 'prism'].map(async (agentId) => {
+        if (signal?.aborted) {
+            emit('error', { message: 'Debate cancelled — client disconnected' });
+            return null;
+        }
         emit('agent-start', { phase: 1, agent: agentId });
         const result = await this.callAgent(agentId, phase1Prompt, (chunk) => {
           emit('agent-chunk', { phase: 1, agent: agentId, chunk });
-        });
+        }, signal);
         emit('agent-done', { phase: 1, agent: agentId });
         return { agentId, result };
       })
     );
 
-    for (const { agentId, result } of phase1Results) {
-      debateContext.phase1[agentId] = result;
+    for (const item of phase1Results) {
+      if (!item) continue;
+      debateContext.phase1[item.agentId] = item.result;
     }
 
     emit('phase-done', { phase: 1 });
@@ -209,6 +225,10 @@ Be specific and substantive. Reference real-world data, trends, or precedents wh
     emit('phase-start', { phase: 2, title: 'Opening Arguments', description: 'Each agent presents their formal position...' });
 
     for (const agentId of ['cipher', 'nova', 'prism']) {
+      if (signal?.aborted) {
+          emit('error', { message: 'Debate cancelled — client disconnected' });
+          return;
+      }
       emit('agent-start', { phase: 2, agent: agentId });
 
       const phase2Prompt = [
@@ -230,7 +250,7 @@ This is your opening statement to the tribunal. Make it compelling, specific, an
 
       const result = await this.callAgent(agentId, phase2Prompt, (chunk) => {
         emit('agent-chunk', { phase: 2, agent: agentId, chunk });
-      });
+      }, signal);
 
       debateContext.phase2[agentId] = result;
       emit('agent-done', { phase: 2, agent: agentId });
@@ -244,6 +264,10 @@ This is your opening statement to the tribunal. Make it compelling, specific, an
     emit('phase-start', { phase: 3, title: 'Cross-Examination', description: 'Agents challenge each other\'s arguments...' });
 
     // CIPHER challenges NOVA
+    if (signal?.aborted) {
+        emit('error', { message: 'Debate cancelled — client disconnected' });
+        return;
+    }
     emit('agent-start', { phase: 3, agent: 'cipher' });
     const cipherCross = await this.callAgent('cipher', [
       {
@@ -259,11 +283,15 @@ Structure: Address NOVA's top 2-3 points directly, then present your strongest r
       }
     ], (chunk) => {
       emit('agent-chunk', { phase: 3, agent: 'cipher', chunk });
-    });
+    }, signal);
     debateContext.phase3.cipher = cipherCross;
     emit('agent-done', { phase: 3, agent: 'cipher' });
 
     // NOVA counters CIPHER
+    if (signal?.aborted) {
+        emit('error', { message: 'Debate cancelled — client disconnected' });
+        return;
+    }
     emit('agent-start', { phase: 3, agent: 'nova' });
     const novaCross = await this.callAgent('nova', [
       {
@@ -282,11 +310,15 @@ Structure: Defend your top 2-3 points, then counter-attack CIPHER's weakest argu
       }
     ], (chunk) => {
       emit('agent-chunk', { phase: 3, agent: 'nova', chunk });
-    });
+    }, signal);
     debateContext.phase3.nova = novaCross;
     emit('agent-done', { phase: 3, agent: 'nova' });
 
     // PRISM challenges both
+    if (signal?.aborted) {
+        emit('error', { message: 'Debate cancelled — client disconnected' });
+        return;
+    }
     emit('agent-start', { phase: 3, agent: 'prism' });
     const prismCross = await this.callAgent('prism', [
       {
@@ -315,7 +347,7 @@ Be the impartial referee. Push both sides to be better.`
       }
     ], (chunk) => {
       emit('agent-chunk', { phase: 3, agent: 'prism', chunk });
-    });
+    }, signal);
     debateContext.phase3.prism = prismCross;
     emit('agent-done', { phase: 3, agent: 'prism' });
 
@@ -327,6 +359,10 @@ Be the impartial referee. Push both sides to be better.`
     emit('phase-start', { phase: 4, title: 'Final Verdict', description: 'PRISM delivers the definitive consensus...' });
 
     // CIPHER final statement
+    if (signal?.aborted) {
+        emit('error', { message: 'Debate cancelled — client disconnected' });
+        return;
+    }
     emit('agent-start', { phase: 4, agent: 'cipher' });
     const cipherFinal = await this.callAgent('cipher', [
       {
@@ -345,11 +381,15 @@ Deliver your FINAL STATEMENT in 1-2 paragraphs. Have any of your views changed b
       }
     ], (chunk) => {
       emit('agent-chunk', { phase: 4, agent: 'cipher', chunk });
-    });
+    }, signal);
     debateContext.phase4.cipher = cipherFinal;
     emit('agent-done', { phase: 4, agent: 'cipher' });
 
     // NOVA final statement
+    if (signal?.aborted) {
+        emit('error', { message: 'Debate cancelled — client disconnected' });
+        return;
+    }
     emit('agent-start', { phase: 4, agent: 'nova' });
     const novaFinal = await this.callAgent('nova', [
       {
@@ -368,11 +408,15 @@ Deliver your FINAL STATEMENT in 1-2 paragraphs. Have any of your views changed b
       }
     ], (chunk) => {
       emit('agent-chunk', { phase: 4, agent: 'nova', chunk });
-    });
+    }, signal);
     debateContext.phase4.nova = novaFinal;
     emit('agent-done', { phase: 4, agent: 'nova' });
 
     // PRISM delivers the FINAL VERDICT
+    if (signal?.aborted) {
+        emit('error', { message: 'Debate cancelled — client disconnected' });
+        return;
+    }
     emit('agent-start', { phase: 4, agent: 'prism' });
     const verdict = await this.callAgent('prism', [
       {
@@ -411,7 +455,7 @@ Be definitive. Be specific. Answer the question asked. This is the moment of tru
       }
     ], (chunk) => {
       emit('agent-chunk', { phase: 4, agent: 'prism', chunk });
-    });
+    }, signal);
     debateContext.phase4.prism = verdict;
     emit('agent-done', { phase: 4, agent: 'prism' });
 

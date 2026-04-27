@@ -319,7 +319,8 @@ async function startDebate() {
 
     const validateRes = await fetch('/api/debate/validate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+      credentials: 'same-origin',
       body: JSON.stringify(validateBody)
     });
     if (!validateRes.ok) {
@@ -352,7 +353,7 @@ async function startDebate() {
   const debateTimeout = setTimeout(() => controller.abort(), 10 * 60 * 1000);
 
   try {
-    const res = await fetch(streamUrl, { signal: controller.signal, headers: authHeaders() });
+    const res = await fetch(streamUrl, { signal: controller.signal, credentials: 'same-origin' });
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({}));
       throw new Error(errBody.error || `Server error (${res.status})`);
@@ -560,7 +561,7 @@ function showShareButton() {
 
 async function loadSavedDebate(debateId, silent = false) {
   try {
-    const res = await fetch(`/api/debate/${encodeURIComponent(debateId)}`);
+    const res = await fetch(`/api/debate/${encodeURIComponent(debateId)}`, { credentials: 'same-origin' });
     if (!res.ok) throw new Error('Debate not found');
     const debate = await res.json();
 
@@ -660,7 +661,7 @@ async function loadDebateOfTheDay() {
   const btnEl = $('dotdBtn');
   if (!topicEl || !btnEl) return;
   try {
-    const res = await fetch('/api/debate-of-the-day');
+    const res = await fetch('/api/debate-of-the-day', { credentials: 'same-origin' });
     const data = await res.json();
     debateOfTheDayTopic = data.topic || '';
     topicEl.textContent = debateOfTheDayTopic || 'Is Bitcoin a good store of value?';
@@ -700,7 +701,8 @@ async function shareCard() {
   try {
     const res = await fetch('/api/card', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
       body: JSON.stringify({
         topic: lastDebateTopic,
         verdict: verdictEl.innerText
@@ -741,7 +743,7 @@ function exportPDF() {
 document.addEventListener('DOMContentLoaded', async () => {
   // Fetch server config (which providers have server-side keys)
   try {
-    const res = await fetch('/api/config');
+    const res = await fetch('/api/config', { credentials: 'same-origin' });
     if (res.ok) {
       const cfg = await res.json();
       availableProviders = cfg.availableProviders || [];
@@ -784,4 +786,38 @@ document.addEventListener('DOMContentLoaded', async () => {
       history.replaceState({}, '', newUrl);
     });
   }
+
+  // Event bindings for elements that previously had inline handlers
+  document.getElementById('loginBtn')?.addEventListener('click', () => showAuthModal('login'));
+  document.getElementById('btn-my-debates')?.addEventListener('click', showMyDebates);
+  document.getElementById('btn-logout')?.addEventListener('click', logout);
+
+  document.getElementById('providerSelect')?.addEventListener('change', updateModels);
+  document.getElementById('mixModels')?.addEventListener('change', toggleMixMode);
+
+  document.getElementById('dotdBtn')?.addEventListener('click', useDebateOfTheDay);
+  document.getElementById('startBtn')?.addEventListener('click', startDebate);
+
+  document.querySelectorAll('[data-action="setTopic"]').forEach(el => {
+    el.addEventListener('click', () => setTopic(el.dataset.topic));
+  });
+
+  document.querySelectorAll('[data-action="updateAgentModels"]').forEach(el => {
+    el.addEventListener('change', () => updateAgentModels(el.dataset.agent));
+  });
+
+  document.getElementById('copyVerdictBtn')?.addEventListener('click', copyVerdict);
+  document.getElementById('shareCardBtn')?.addEventListener('click', shareCard);
+  document.getElementById('exportJsonBtn')?.addEventListener('click', exportJSON);
+  document.getElementById('exportPdfBtn')?.addEventListener('click', exportPDF);
+
+  document.getElementById('authModal')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeAuthModal();
+  });
+  document.querySelectorAll('[data-action="switchAuthTab"]').forEach(el => {
+    el.addEventListener('click', () => switchAuthTab(el.dataset.tab));
+  });
+  document.getElementById('authModalClose')?.addEventListener('click', closeAuthModal);
+  document.getElementById('myDebatesClose')?.addEventListener('click', closeMyDebates);
+
 });
