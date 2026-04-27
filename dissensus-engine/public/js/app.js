@@ -11,6 +11,7 @@ let currentPhase = 0;
 let eventSource = null;
 let availableProviders = []; // Providers with server keys configured
 let lastDebateTopic = ''; // For Share Card
+let currentDebateId = null; // For share/visibility toggles
 
 const agentPhaseContent = {
   cipher: {},
@@ -76,7 +77,7 @@ function updateModels() {
   // Update hint based on provider
   $('providerHint').innerHTML = hasServerKey
     ? `✓ <strong>Server key active</strong> for ${config.label} — Ready to debate.`
-    : `<span style="color: #ff6b6b;">⚠ ${config.label} is not configured. Contact the administrator.</span>`;
+    : `<span class="provider-hint-error">⚠ ${config.label} is not configured. Contact the administrator.</span>`;
 
   // Restore saved model for this provider
   const savedModel = localStorage.getItem(`dissensus_model_${provider}`);
@@ -89,11 +90,15 @@ function updateModels() {
 function toggleMixMode() {
   const mixMode = document.getElementById('mixModels').checked;
   document.querySelectorAll('.agent-model-select').forEach(el => {
-    el.style.display = mixMode ? 'flex' : 'none';
+    if (mixMode) el.classList.remove('hidden');
+    else el.classList.add('hidden');
   });
   // Hide global provider/model when mix mode is on
   const globalControls = document.querySelector('.provider-row');
-  if (globalControls) globalControls.style.display = mixMode ? 'none' : '';
+  if (globalControls) {
+    if (mixMode) globalControls.classList.add('hidden');
+    else globalControls.classList.remove('hidden');
+  }
 }
 
 function updateAgentModels(agentId) {
@@ -539,18 +544,24 @@ function debateCompleteWithId(debateId) {
   debateComplete();
   // Update URL with debate ID for sharing
   if (debateId) {
+    currentDebateId = debateId;
     const newUrl = new URL(window.location);
     newUrl.searchParams.set('debate', debateId);
     window.history.pushState({}, '', newUrl);
     // Show share button
     showShareButton();
+    // Show visibility/share buttons for logged-in users
+    if (isLoggedIn()) {
+      document.getElementById('btn-toggle-visibility')?.classList.remove('hidden');
+      document.getElementById('btn-share-link')?.classList.remove('hidden');
+    }
   }
 }
 
 function showShareButton() {
   const shareBtn = $('shareDebate');
   if (shareBtn) {
-    shareBtn.style.display = 'inline-flex';
+    shareBtn.classList.remove('hidden');
     shareBtn.onclick = () => {
       navigator.clipboard.writeText(window.location.href);
       shareBtn.textContent = 'Link Copied!';
@@ -583,6 +594,7 @@ async function loadSavedDebate(debateId, silent = false) {
 
     // Store topic for Share Card
     lastDebateTopic = debate.topic;
+    currentDebateId = debateId;
 
     // Replay each event to populate the UI
     const rawText = { cipher: {}, nova: {}, prism: {} };
@@ -601,6 +613,11 @@ async function loadSavedDebate(debateId, silent = false) {
 
     // Show share button
     showShareButton();
+    // Show visibility/share buttons for logged-in users
+    if (isLoggedIn()) {
+      document.getElementById('btn-toggle-visibility')?.classList.remove('hidden');
+      document.getElementById('btn-share-link')?.classList.remove('hidden');
+    }
 
     setHeaderStatus(false, 'Loaded saved debate');
   } catch (err) {
@@ -645,6 +662,14 @@ function resetDebateUI() {
   $('verdictPanel').classList.remove('visible');
   $('verdictContent').innerHTML = '';
   currentPhase = 0;
+  currentDebateId = null;
+
+  const shareBtn = $('shareDebate');
+  if (shareBtn) shareBtn.classList.add('hidden');
+  const toggleVis = document.getElementById('btn-toggle-visibility');
+  const shareLink = document.getElementById('btn-share-link');
+  if (toggleVis) toggleVis.classList.add('hidden');
+  if (shareLink) shareLink.classList.add('hidden');
 }
 
 // --- Helpers ---
@@ -739,6 +764,52 @@ function exportPDF() {
     window.open(`/api/debate/${debateId}/export/pdf`, '_blank');
 }
 
+async function toggleDebateVisibility() {
+    if (!currentDebateId) return;
+    const currentVis = document.getElementById('visibility-icon').textContent === '🔒' ? 'public' : 'private';
+    const res = await fetch(`/api/debate/${currentDebateId}/visibility`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+        credentials: 'same-origin',
+        body: JSON.stringify({ visibility: currentVis })
+    });
+    if (res.ok) {
+        const data = await res.json();
+        updateVisibilityUI(data.visibility);
+    }
+}
+
+function updateVisibilityUI(visibility) {
+    const btn = document.getElementById('btn-toggle-visibility');
+    const icon = document.getElementById('visibility-icon');
+    if (visibility === 'public') {
+        icon.textContent = '🌐';
+        btn.lastChild.textContent = ' Public';
+    } else {
+        icon.textContent = '🔒';
+        btn.lastChild.textContent = ' Private';
+    }
+}
+
+async function generateShareLink() {
+    if (!currentDebateId) return;
+    const res = await fetch(`/api/debate/${currentDebateId}/share`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+        credentials: 'same-origin'
+    });
+    if (res.ok) {
+        const data = await res.json();
+        const shareUrl = `${window.location.origin}/?debate=${currentDebateId}&share=${data.shareToken}`;
+        navigator.clipboard.writeText(shareUrl);
+        // Brief visual feedback
+        const btn = document.getElementById('btn-share-link');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '✅ Copied!';
+        setTimeout(() => btn.innerHTML = orig, 2000);
+    }
+}
+
 // --- On Load ---
 document.addEventListener('DOMContentLoaded', async () => {
   // Fetch server config (which providers have server-side keys)
@@ -764,7 +835,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('.agent-provider-select option').forEach(opt => {
     if (!availableProviders.includes(opt.value)) {
       opt.disabled = true;
-      opt.style.display = 'none';
+      opt.classList.add('hidden');
     }
   });
 
@@ -810,6 +881,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('shareCardBtn')?.addEventListener('click', shareCard);
   document.getElementById('exportJsonBtn')?.addEventListener('click', exportJSON);
   document.getElementById('exportPdfBtn')?.addEventListener('click', exportPDF);
+  document.getElementById('btn-toggle-visibility')?.addEventListener('click', toggleDebateVisibility);
+  document.getElementById('btn-share-link')?.addEventListener('click', generateShareLink);
 
   document.getElementById('authModal')?.addEventListener('click', (e) => {
     if (e.target === e.currentTarget) closeAuthModal();

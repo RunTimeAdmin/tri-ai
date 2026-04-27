@@ -16,7 +16,17 @@ const EFFECTIVE_JWT_SECRET = JWT_SECRET || 'dissensus-dev-secret-not-for-product
 const JWT_EXPIRY = '7d';
 
 async function registerUser(email, password, name) {
-    const normalizedEmail = email.toLowerCase().trim();
+    // Input validation
+    const normalizedEmail = (email || '').trim().toLowerCase();
+    if (!normalizedEmail || !normalizedEmail.includes('@') || !normalizedEmail.includes('.')) {
+        return { error: 'Valid email required' };
+    }
+    if (!password || password.length < 8) {
+        return { error: 'Password must be at least 8 characters' };
+    }
+    if (!name || name.trim().length < 1) {
+        return { error: 'Name is required' };
+    }
 
     const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail);
     if (existing) return { error: 'Email already registered' };
@@ -26,18 +36,18 @@ async function registerUser(email, password, name) {
     const now = new Date().toISOString();
 
     db.prepare('INSERT INTO users (id, email, password, name, created_at) VALUES (?, ?, ?, ?, ?)')
-        .run(id, normalizedEmail, hash, name, now);
+        .run(id, normalizedEmail, hash, name.trim(), now);
 
     // Auto-create personal workspace
     const wsId = crypto.randomUUID();
     db.prepare('INSERT INTO workspaces (id, name, owner_id, created_at) VALUES (?, ?, ?, ?)')
-        .run(wsId, `${name}'s Workspace`, id, now);
+        .run(wsId, `${name.trim()}'s Workspace`, id, now);
     db.prepare('INSERT INTO workspace_members (workspace_id, user_id, role, joined_at) VALUES (?, ?, ?, ?)')
         .run(wsId, id, 'owner', now);
 
-    const token = jwt.sign({ id, email: normalizedEmail, name }, EFFECTIVE_JWT_SECRET, { expiresIn: JWT_EXPIRY });
+    const token = jwt.sign({ id, email: normalizedEmail, name: name.trim() }, EFFECTIVE_JWT_SECRET, { expiresIn: JWT_EXPIRY });
     const csrfToken = crypto.randomBytes(32).toString('hex');
-    return { token, user: { id, email: normalizedEmail, name }, csrfToken };
+    return { token, user: { id, email: normalizedEmail, name: name.trim() }, csrfToken };
 }
 
 async function loginUser(email, password) {
@@ -105,7 +115,8 @@ function csrfProtection(req, res, next) {
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
     const csrfToken = req.headers['x-csrf-token'];
     const cookieToken = req.cookies?.csrf_token;
-    if (!csrfToken || !cookieToken || csrfToken !== cookieToken) {
+    if (!csrfToken || !cookieToken || csrfToken.length !== cookieToken.length || 
+        !crypto.timingSafeEqual(Buffer.from(csrfToken), Buffer.from(cookieToken))) {
         return res.status(403).json({ error: 'Invalid CSRF token' });
     }
     next();

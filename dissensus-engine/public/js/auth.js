@@ -40,17 +40,8 @@ async function handleRegister(e) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Registration failed');
 
-        // Auto-login after register
-        const loginRes = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-        const loginData = await loginRes.json();
-        if (!loginRes.ok) throw new Error(loginData.error || 'Login failed');
-
-        currentUser = loginData.user;
-        csrfToken = loginData.csrfToken;
+        currentUser = data.user;
+        csrfToken = data.csrfToken;
         updateAuthUI();
         closeAuthModal();
     } catch (err) {
@@ -102,29 +93,37 @@ function updateAuthUI() {
     const userName = document.getElementById('userName');
 
     if (user && loginBtn && userMenu) {
-        loginBtn.style.display = 'none';
-        userMenu.style.display = 'flex';
+        loginBtn.classList.add('hidden');
+        userMenu.classList.remove('hidden');
         if (userName) userName.textContent = user.name || user.email;
     } else if (loginBtn && userMenu) {
-        loginBtn.style.display = 'inline-flex';
-        userMenu.style.display = 'none';
+        loginBtn.classList.remove('hidden');
+        userMenu.classList.add('hidden');
     }
 }
 
 function showAuthModal(tab = 'login') {
     const modal = document.getElementById('authModal');
-    if (modal) modal.style.display = 'flex';
+    if (modal) modal.classList.remove('hidden');
     switchAuthTab(tab);
 }
 
 function closeAuthModal() {
     const modal = document.getElementById('authModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.classList.add('hidden');
 }
 
 function switchAuthTab(tab) {
-    document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
-    document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    if (loginForm) {
+        if (tab === 'login') loginForm.classList.remove('hidden');
+        else loginForm.classList.add('hidden');
+    }
+    if (registerForm) {
+        if (tab === 'register') registerForm.classList.remove('hidden');
+        else registerForm.classList.add('hidden');
+    }
     document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
     document.querySelector(`.auth-tab[data-tab="${tab}"]`)?.classList.add('active');
 }
@@ -132,7 +131,7 @@ function switchAuthTab(tab) {
 async function showMyDebates() {
     const panel = document.getElementById('myDebatesPanel');
     if (!panel) return;
-    panel.style.display = 'block';
+    panel.classList.remove('hidden');
 
     const user = currentUser;
     if (!user) return;
@@ -172,7 +171,7 @@ async function showMyDebates() {
 
 function closeMyDebates() {
     const panel = document.getElementById('myDebatesPanel');
-    if (panel) panel.style.display = 'none';
+    if (panel) panel.classList.add('hidden');
 }
 
 function loadDebateFromList(debateId) {
@@ -203,7 +202,7 @@ async function initAuth() {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
-    updateAuthUI();
+    initAuth();
 
     const loginForm = document.getElementById('loginFormEl');
     const registerForm = document.getElementById('registerFormEl');

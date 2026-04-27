@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const db = require('./db');
 
 const DATA_DIR = path.join(__dirname, '..', 'data', 'debates');
 
@@ -12,18 +13,31 @@ function ensureDir() {
 }
 ensureDir();
 
+db.exec(`
+    CREATE TABLE IF NOT EXISTS debate_index (
+        id TEXT PRIMARY KEY,
+        topic TEXT NOT NULL,
+        provider TEXT,
+        model TEXT,
+        user_id TEXT,
+        workspace_id TEXT,
+        visibility TEXT NOT NULL DEFAULT 'private',
+        share_token TEXT,
+        timestamp TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_debate_index_timestamp ON debate_index(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_debate_index_user ON debate_index(user_id);
+    CREATE INDEX IF NOT EXISTS idx_debate_index_workspace ON debate_index(workspace_id);
+    CREATE INDEX IF NOT EXISTS idx_debate_index_share ON debate_index(share_token);
+`);
+
 function updateIndex(metadata) {
-    const indexPath = path.join(DATA_DIR, 'index.json');
-    let index = [];
-    try {
-        if (fs.existsSync(indexPath)) {
-            index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
-        }
-    } catch { index = []; }
-    index.unshift(metadata);
-    // Keep index at reasonable size
-    if (index.length > 1000) index = index.slice(0, 1000);
-    fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
+    db.prepare(`INSERT OR REPLACE INTO debate_index (id, topic, provider, model, user_id, workspace_id, visibility, share_token, timestamp) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+        metadata.id, metadata.topic, metadata.provider, metadata.model,
+        metadata.userId || null, metadata.workspaceId || null,
+        'private', null, metadata.timestamp
+    );
 }
 
 /**
@@ -73,42 +87,32 @@ function getDebate(id) {
  * @returns {Array}
  */
 function listRecent(limit = 20) {
-    const indexPath = path.join(DATA_DIR, 'index.json');
-    try {
-        if (fs.existsSync(indexPath)) {
-            const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
-            return index.slice(0, limit);
-        }
-    } catch { }
-    // Fallback: scan files if index.json missing
-    return listRecentFallback(limit);
+    return db.prepare('SELECT id, topic, provider, model, user_id as userId, workspace_id as workspaceId, visibility, share_token as shareToken, timestamp FROM debate_index ORDER BY timestamp DESC LIMIT ?').all(limit);
 }
 
-function listRecentFallback(limit = 20) {
-    ensureDir();
-    const files = fs.readdirSync(DATA_DIR)
-        .filter(f => f.endsWith('.json') && f !== 'index.json')
-        .map(f => {
-            const filePath = path.join(DATA_DIR, f);
-            try {
-                const stat = fs.statSync(filePath);
-                const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-                return {
-                    id: data.id,
-                    topic: (data.topic || '').substring(0, 100),
-                    provider: data.provider,
-                    userId: data.userId || null,
-                    workspaceId: data.workspaceId || null,
-                    timestamp: data.timestamp || stat.mtime.toISOString()
-                };
-            } catch {
-                return null;
-            }
-        })
-        .filter(Boolean)
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        .slice(0, limit);
-    return files;
+function setDebateVisibility(debateId, visibility, userId) {
+    const row = db.prepare('SELECT user_id FROM debate_index WHERE id = ?').get(debateId);
+    if (!row || row.user_id !== userId) return false;
+    db.prepare('UPDATE debate_index SET visibility = ? WHERE id = ?').run(visibility, debateId);
+    return true;
 }
 
-module.exports = { saveDebate, getDebate, listRecent };
+function generateShareToken(debateId, userId) {
+    const row = db.prepare('SELECT user_id FROM debate_index WHERE id = ?').get(debateId);
+    if (!row || row.user_id !== userId) return null;
+    const token = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+    db.prepare('UPDATE debate_index SET share_token = ?, visibility = ? WHERE id = ?').run(token, 'shared', debateId);
+    return token;
+}
+
+function getDebateByShareToken(shareToken) {
+    if (!shareToken || shareToken.length !== 16) return null;
+    return db.prepare('SELECT id FROM debate_index WHERE share_token = ?').get(shareToken);
+}
+
+function getDebateMeta(id) {
+    if (!id || !/^[a-f0-9-]{36}$/.test(id)) return null;
+    return db.prepare('SELECT id, user_id as userId, workspace_id as workspaceId, visibility, share_token as shareToken FROM debate_index WHERE id = ?').get(id);
+}
+
+module.exports = { saveDebate, getDebate, listRecent, setDebateVisibility, generateShareToken, getDebateByShareToken, getDebateMeta };

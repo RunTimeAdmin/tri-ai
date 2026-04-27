@@ -13,7 +13,7 @@ const { DebateEngine, PROVIDERS } = require('./debate-engine');
 const { generateCard, summarizeVerdictForCard } = require('./card-generator');
 const { getDebateOfTheDay } = require('./debate-of-the-day');
 const { recordDebate, recordError, getPublicMetrics, getRecentTopics } = require('./metrics');
-const { saveDebate, getDebate, listRecent } = require('./debate-store');
+const { saveDebate, getDebate, listRecent, setDebateVisibility, generateShareToken, getDebateMeta } = require('./debate-store');
 const { formatDebateJSON, generateDebatePDF } = require('./debate-export');
 const { registerUser, loginUser, getUser, authMiddleware, optionalAuth, csrfProtection } = require('./auth');
 const { createWorkspace, getWorkspace, getUserWorkspaces } = require('./workspace');
@@ -64,7 +64,7 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      styleSrc: ["'self'", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:"],
       connectSrc: ["'self'"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
@@ -251,14 +251,14 @@ function setAuthCookies(res, token, csrfToken) {
     res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'lax',
         path: '/',
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
     res.cookie('csrf_token', csrfToken, {
         httpOnly: false, // JS needs to read this
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'lax',
         path: '/',
         maxAge: 7 * 24 * 60 * 60 * 1000
     });
@@ -458,25 +458,59 @@ app.get('/api/debates/recent', recentLimiter, (req, res) => {
 });
 
 // ── Debate Persistence Endpoints ──────────────────────────────
-app.get('/api/debate/:id', (req, res) => {
+app.get('/api/debate/:id', optionalAuth, (req, res) => {
     const debate = getDebate(req.params.id);
     if (!debate) return res.status(404).json({ error: 'Debate not found' });
+    
+    const meta = getDebateMeta(req.params.id);
+    if (meta) {
+        const isOwner = req.user && meta.userId === req.user.id;
+        const isShared = meta.visibility === 'shared' && req.query.share === meta.shareToken;
+        const isPublic = meta.visibility === 'public';
+        if (!isOwner && !isShared && !isPublic) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+    }
+    // If no meta entry (legacy debate), allow access
+    
     res.json(debate);
 });
 
 // Structured JSON export
-app.get('/api/debate/:id/export/json', (req, res) => {
+app.get('/api/debate/:id/export/json', optionalAuth, (req, res) => {
     const debate = getDebate(req.params.id);
     if (!debate) return res.status(404).json({ error: 'Debate not found' });
+    
+    const meta = getDebateMeta(req.params.id);
+    if (meta) {
+        const isOwner = req.user && meta.userId === req.user.id;
+        const isShared = meta.visibility === 'shared' && req.query.share === meta.shareToken;
+        const isPublic = meta.visibility === 'public';
+        if (!isOwner && !isShared && !isPublic) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+    }
+    
     const structured = formatDebateJSON(debate);
     res.setHeader('Content-Disposition', `attachment; filename="dissensus-${req.params.id.substring(0,8)}.json"`);
     res.json(structured);
 });
 
 // PDF export
-app.get('/api/debate/:id/export/pdf', (req, res) => {
+app.get('/api/debate/:id/export/pdf', optionalAuth, (req, res) => {
     const debate = getDebate(req.params.id);
     if (!debate) return res.status(404).json({ error: 'Debate not found' });
+    
+    const meta = getDebateMeta(req.params.id);
+    if (meta) {
+        const isOwner = req.user && meta.userId === req.user.id;
+        const isShared = meta.visibility === 'shared' && req.query.share === meta.shareToken;
+        const isPublic = meta.visibility === 'public';
+        if (!isOwner && !isShared && !isPublic) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+    }
+    
     try {
         const doc = generateDebatePDF(debate);
         res.setHeader('Content-Type', 'application/pdf');
@@ -487,6 +521,24 @@ app.get('/api/debate/:id/export/pdf', (req, res) => {
         console.error('PDF generation error:', err);
         res.status(500).json({ error: 'Failed to generate PDF' });
     }
+});
+
+// Toggle debate visibility
+app.post('/api/debate/:id/visibility', authMiddleware, csrfProtection, (req, res) => {
+    const { visibility } = req.body; // 'private' or 'public'
+    if (!['private', 'public'].includes(visibility)) {
+        return res.status(400).json({ error: 'Invalid visibility' });
+    }
+    const ok = setDebateVisibility(req.params.id, visibility, req.user.id);
+    if (!ok) return res.status(403).json({ error: 'Not authorized' });
+    res.json({ ok: true, visibility });
+});
+
+// Generate share link
+app.post('/api/debate/:id/share', authMiddleware, csrfProtection, (req, res) => {
+    const token = generateShareToken(req.params.id, req.user.id);
+    if (!token) return res.status(403).json({ error: 'Not authorized' });
+    res.json({ shareToken: token });
 });
 
 // ----------------------------------------------------------
