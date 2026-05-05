@@ -192,7 +192,7 @@ Visit["User visits website"] --> Hero["Hero CTA: Buy $DISS / Launch App"]
 Hero --> About["Scroll: About / Agents / How It Works"]
 About --> Token["Tokenomics & Evolution"]
 Token --> Roadmap["Roadmap"]
-Roadmap --> Engage["CTA: Join community / Follow / Telegram"]
+Roadmap --> Engage["CTA: Join community / Follow on X"]
 ```
 
 **Diagram sources**

@@ -28,7 +28,6 @@
 
 ### Community
 - [ ] X/Twitter: @dissensus or similar
-- [ ] Telegram group
 - [ ] Community growth campaign
 
 ### Infrastructure
