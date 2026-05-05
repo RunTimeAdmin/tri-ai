@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<!-- Dissensus — AI Debate Engine -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Dissensus — AI Debate Engine | 3 AI Minds. 1 Truth.</title>
+    <meta name="description" content="Three autonomous AI agents with opposing perspectives battle over any topic and forge truth from the wreckage. Adversarial intelligence at scale.">
+    <link rel="canonical" href="https://dissensus.fun/">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://dissensus.fun/">
+    <meta property="og:site_name" content="Dissensus">
+    <meta property="og:title" content="Dissensus — 3 AI Minds. 1 Truth.">
+    <meta property="og:description" content="Three AI agents with opposing perspectives battle it out on any topic — and forge truth from the wreckage.">
+    <meta property="og:image" content="https://dissensus.fun/images/diss-og-1200x630.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Dissensus — 3 AI Minds. 1 Truth. Where Disagreement Forges Truth">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@DissensusDev">
+    <meta name="twitter:creator" content="@DissensusDev">
+    <meta name="twitter:title" content="Dissensus — 3 AI Minds. 1 Truth.">
+    <meta name="twitter:description" content="Three AI agents with opposing perspectives battle it out on any topic — and forge truth from the wreckage.">
+    <meta name="twitter:image" content="https://dissensus.fun/images/diss-og-1200x630.png">
+    <meta name="twitter:image:alt" content="Dissensus — 3 AI Minds. 1 Truth. Where Disagreement Forges Truth">
+    <link rel="icon" type="image/png" href="images/diss-pfp.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=5">
+<script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
+</head>
+<body>
+
+<!-- Background Grid + Gradient Mesh -->
+<div class="bg-grid"></div>
+<div class="bg-gradient-mesh"></div>
+
+<!-- Navigation -->
+<nav class="nav">
+    <div class="nav-logo">
+        <span>⚡</span> DISSENSUS
+    </div>
+    <button class="nav-toggle" id="navToggle" aria-label="Menu" onclick="toggleMobileNav()">
+        <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links" id="navLinks">
+        <li><a href="#about" class="nav-link">About</a></li>
+        <li><a href="#agents" class="nav-link">Agents</a></li>
+        <li><a href="#how" class="nav-link">How It Works</a></li>
+        <li><a href="#platform" class="nav-link">Platform</a></li>
+        <li><a href="#roadmap" class="nav-link">Roadmap</a></li>
+        <li><a href="https://app.dissensus.fun" class="btn-launch" target="_blank">🚀 Launch App</a></li>
+    </ul>
+</nav>
+<div class="nav-overlay" id="navOverlay" onclick="toggleMobileNav()"></div>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+    <div class="hero-glow red"></div>
+    <div class="hero-glow green"></div>
+    <div class="hero-glow cyan"></div>
+
+    <div class="hero-badge fade-in d1">
+        ⚡ Debate Engine Now Open — Try It Free
+    </div>
+
+    <h1 class="hero-title fade-in d2">
+        <span class="ticker">DISSENSUS</span>
+    </h1>
+
+    <p class="hero-subtitle fade-in d3">3 AI Minds. 1 Truth.</p>
+
+    <p class="hero-tagline fade-in d3">"Where Disagreement Forges Truth"</p>
+
+    <div class="hero-agents fade-in d4">
+        <span class="agent-chip cipher">🔴 CIPHER — The Skeptic</span>
+        <span class="agent-chip nova">🟢 NOVA — The Advocate</span>
+        <span class="agent-chip prism">🔵 PRISM — The Synthesizer</span>
+    </div>
+
+    <div class="hero-cta fade-in d5">
+        <a href="https://app.dissensus.fun" class="btn-launch-hero" target="_blank">🚀 Launch Debate Engine</a>
+        <a href="#about" class="btn-secondary">⚡ Learn More</a>
+    </div>
+</header>
+
+<!-- ============ WHAT IS DISSENSUS ============ -->
+<section id="about">
+    <p class="section-label">What is Dissensus?</p>
+    <h2 class="section-title">The AI debate engine that<br>forges truth from conflict.</h2>
+    <p class="section-desc">
+        Dissensus is an AI-powered debate engine where three autonomous agents with
+        opposing perspectives battle over any topic you throw at them — and forge consensus from chaos.
+    </p>
+
+    <div class="what-grid">
+        <div class="what-card">
+            <div class="icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs><linearGradient id="grad-brain" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#8B5CF6"/><stop offset="100%" stop-color="#00D4FF"/></linearGradient></defs>
+                    <path d="M24 4C18 4 13 8.5 13 14c0 2.5 1 4.8 2.5 6.5C13.5 22 12 24.5 12 27.5c0 4.5 3.5 8 8 8.5V40h8v-4c4.5-.5 8-4 8-8.5 0-3-1.5-5.5-3.5-7C34 19 35 16.5 35 14c0-5.5-5-10-11-10z" stroke="url(#grad-brain)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M20 18c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke="url(#grad-brain)" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    <path d="M18 26h12" stroke="url(#grad-brain)" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M20 30h8" stroke="url(#grad-brain)" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="24" cy="22" r="2" fill="url(#grad-brain)"/>
+                    <path d="M24 40v4" stroke="url(#grad-brain)" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <h3>AI-Powered Debate Engine</h3>
+            <p>Three distinct AI agents independently research any topic, then engage in a structured 4-phase dialectical debate. Not one AI opinion — three adversarial perspectives stress-testing every claim.</p>
+        </div>
+        <div class="what-card">
+            <div class="icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs><linearGradient id="grad-swords" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FF4444"/><stop offset="100%" stop-color="#FF8800"/></linearGradient></defs>
+                    <path d="M8 8l14 14" stroke="url(#grad-swords)" stroke-width="2.5" stroke-linecap="round"/>
+                    <path d="M8 8l6 0 0 6" stroke="url(#grad-swords)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M40 8L26 22" stroke="url(#grad-swords)" stroke-width="2.5" stroke-linecap="round"/>
+                    <path d="M40 8l-6 0 0 6" stroke="url(#grad-swords)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M18 26l-6 6 4 4 6-6" stroke="url(#grad-swords)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M30 26l6 6-4 4-6-6" stroke="url(#grad-swords)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="24" cy="24" r="4" stroke="url(#grad-swords)" stroke-width="2" fill="none"/>
+                    <circle cx="24" cy="24" r="1.5" fill="url(#grad-swords)"/>
+                </svg>
+            </div>
+            <h3>Adversarial Truth-Finding</h3>
+            <p>CIPHER attacks. NOVA defends. PRISM synthesizes. Through structured conflict, biases are exposed, weak arguments collapse, and only the strongest conclusions survive. Truth forged through fire.</p>
+        </div>
+        <div class="what-card">
+            <div class="icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs><linearGradient id="grad-target" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00FF88"/><stop offset="100%" stop-color="#00D4FF"/></linearGradient></defs>
+                    <circle cx="24" cy="24" r="18" stroke="url(#grad-target)" stroke-width="2" fill="none" opacity="0.4"/>
+                    <circle cx="24" cy="24" r="12" stroke="url(#grad-target)" stroke-width="2" fill="none" opacity="0.6"/>
+                    <circle cx="24" cy="24" r="6" stroke="url(#grad-target)" stroke-width="2" fill="none" opacity="0.8"/>
+                    <circle cx="24" cy="24" r="2.5" fill="url(#grad-target)"/>
+                    <path d="M24 4v6" stroke="url(#grad-target)" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M24 38v6" stroke="url(#grad-target)" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M4 24h6" stroke="url(#grad-target)" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M38 24h6" stroke="url(#grad-target)" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <h3>Ranked Consensus Output</h3>
+            <p>No wishy-washy "it depends." Dissensus delivers specific, ranked conclusions with confidence levels — plus transparent remaining disagreements. Real answers, not hedged opinions.</p>
+        </div>
+        <div class="what-card">
+            <div class="icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs><linearGradient id="grad-search" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00D4FF"/><stop offset="100%" stop-color="#8B5CF6"/></linearGradient></defs>
+                    <circle cx="20" cy="20" r="12" stroke="url(#grad-search)" stroke-width="2.5" fill="none"/>
+                    <path d="M29 29l12 12" stroke="url(#grad-search)" stroke-width="2.5" stroke-linecap="round"/>
+                    <path d="M14 17h12" stroke="url(#grad-search)" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+                    <path d="M14 21h8" stroke="url(#grad-search)" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+                    <circle cx="20" cy="20" r="4" stroke="url(#grad-search)" stroke-width="1.5" fill="none" opacity="0.4"/>
+                </svg>
+            </div>
+            <h3>Real-Time Research</h3>
+            <p>Agents don't just argue from vibes. They research the web in real-time, pulling actual data, market stats, and evidence before debating. Every argument is backed by facts.</p>
+        </div>
+        <div class="what-card">
+            <div class="icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs><linearGradient id="grad-share" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00FF88"/><stop offset="100%" stop-color="#8B5CF6"/></linearGradient></defs>
+                    <circle cx="36" cy="10" r="5" stroke="url(#grad-share)" stroke-width="2" fill="none"/>
+                    <circle cx="12" cy="24" r="5" stroke="url(#grad-share)" stroke-width="2" fill="none"/>
+                    <circle cx="36" cy="38" r="5" stroke="url(#grad-share)" stroke-width="2" fill="none"/>
+                    <path d="M17 21l14-8M17 27l14 8" stroke="url(#grad-share)" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <h3>Shareable Verdicts</h3>
+            <p>Every debate ends with a downloadable verdict card — branded, social-ready, and built to spread. Share the conclusion, not just a screenshot. Built for virality.</p>
+        </div>
+        <div class="what-card">
+            <div class="icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs><linearGradient id="grad-gov" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#8B5CF6"/><stop offset="100%" stop-color="#00FF88"/></linearGradient></defs>
+                    <path d="M24 6l16 10v2H8v-2L24 6z" stroke="url(#grad-gov)" stroke-width="2" fill="none" stroke-linejoin="round"/>
+                    <path d="M12 18v16" stroke="url(#grad-gov)" stroke-width="2.5" stroke-linecap="round"/>
+                    <path d="M20 18v16" stroke="url(#grad-gov)" stroke-width="2.5" stroke-linecap="round"/>
+                    <path d="M28 18v16" stroke="url(#grad-gov)" stroke-width="2.5" stroke-linecap="round"/>
+                    <path d="M36 18v16" stroke="url(#grad-gov)" stroke-width="2.5" stroke-linecap="round"/>
+                    <path d="M8 34h32v4H8z" stroke="url(#grad-gov)" stroke-width="2" fill="none" stroke-linejoin="round"/>
+                    <circle cx="24" cy="12" r="2" fill="url(#grad-gov)"/>
+                </svg>
+            </div>
+            <h3>Open to Everyone</h3>
+            <p>Start debating any topic instantly — no setup, no gatekeeping. Submit a question and get a structured, multi-perspective verdict in minutes. Intelligence should be accessible.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ============ THE AGENTS ============ -->
+<section id="agents">
+    <p class="section-label">The Three Minds</p>
+    <h2 class="section-title">Meet the agents that will<br>challenge your thesis.</h2>
+    <p class="section-desc">
+        Each agent has a distinct personality, reasoning approach, and role in the debate.
+        Together, they form a system of checks and balances that no single AI can match.
+    </p>
+
+    <div class="agents-grid">
+        <div class="agent-card cipher">
+            <div class="agent-portrait-wrapper">
+                <img src="images/characters/cipher-portrait.jpg" alt="CIPHER - The Skeptic" class="agent-portrait" loading="lazy">
+            </div>
+            <h3>CIPHER</h3>
+            <p class="agent-role">The Skeptic / Red Team Auditor</p>
+            <p class="agent-desc">
+                CIPHER trusts nothing and questions everything. Trained to find holes in every argument,
+                expose hidden risks, and challenge assumptions that others take for granted. If your thesis
+                has a weakness, CIPHER will find it.
+            </p>
+            <p class="agent-quote">"Show me the evidence, not the narrative."</p>
+        </div>
+
+        <div class="agent-card nova">
+            <div class="agent-portrait-wrapper">
+                <img src="images/characters/nova-portrait.jpg" alt="NOVA - The Advocate" class="agent-portrait" loading="lazy">
+            </div>
+            <h3>NOVA</h3>
+            <p class="agent-role">The Advocate / Blue-Sky Thinker</p>
+            <p class="agent-desc">
+                NOVA sees the potential others miss. Builds the strongest possible bull case, identifies
+                catalysts and opportunities, and advocates for the upside. If there's alpha in the thesis,
+                NOVA will surface it.
+            </p>
+            <p class="agent-quote">"The opportunity is in what others haven't considered."</p>
+        </div>
+
+        <div class="agent-card prism">
+            <div class="agent-portrait-wrapper">
+                <img src="images/characters/prism-portrait.jpg" alt="PRISM - The Synthesizer" class="agent-portrait" loading="lazy">
+            </div>
+            <h3>PRISM</h3>
+            <p class="agent-role">The Synthesizer / Neutral Analyst</p>
+            <p class="agent-desc">
+                PRISM weighs both sides with cold objectivity. Evaluates the strength of each argument,
+                identifies where the evidence actually points, and forges the final consensus. The referee
+                who delivers the verdict.
+            </p>
+            <p class="agent-quote">"Let the data decide, not the narrative."</p>
+        </div>
+    </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section id="how">
+    <p class="section-label">The Dissensus Process</p>
+    <h2 class="section-title">Four phases. Zero bias.<br>One truth.</h2>
+    <p class="section-desc">
+        Dissensus follows a structured dialectical process modeled after academic debate
+        and adversarial testing. Every topic goes through four rigorous phases.
+    </p>
+
+    <div class="phases">
+        <div class="phase-card">
+            <div class="phase-number">1</div>
+            <h3>📢 Opening Statements</h3>
+            <p>Each agent independently researches the topic and presents their initial perspective. Three distinct viewpoints, backed by real data.</p>
+        </div>
+        <div class="phase-card">
+            <div class="phase-number">2</div>
+            <h3>⚔️ Cross-Examination</h3>
+            <p>The agents challenge each other's reasoning. They point out flaws, biases, missing data, and logical fallacies in each other's arguments.</p>
+        </div>
+        <div class="phase-card">
+            <div class="phase-number">3</div>
+            <h3>🛡️ Rebuttals & Defense</h3>
+            <p>Each agent refines their position based on the challenges received. Weak arguments are abandoned. Strong ones are reinforced with additional evidence.</p>
+        </div>
+        <div class="phase-card">
+            <div class="phase-number">4</div>
+            <h3>🎯 Synthesis & Consensus</h3>
+            <p>The agents converge on ranked conclusions with confidence levels. Remaining disagreements are transparently documented. Truth, forged through conflict.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ============ PLATFORM UTILITY ============ -->
+<section id="platform">
+    <p class="section-label">Platform & utility</p>
+    <h2 class="section-title">Shipping real intelligence<br>in public.</h2>
+    <p class="section-desc">
+        Dissensus is building a full-stack adversarial intelligence platform — shareable verdicts, live transparency metrics, tiered access, and a roadmap that ships fast.
+        <a href="https://app.dissensus.fun" target="_blank" rel="noopener noreferrer" class="text-link">Launch the live app</a> and run your first debate in under 60 seconds.
+    </p>
+    <div class="utility-grid">
+        <article class="utility-card utility-live">
+            <span class="utility-badge">Live</span>
+            <h3>Phase 1 — Debate engine</h3>
+            <p>Full 4-phase adversarial debate on any topic. Three agents. Real-time web research. Ranked verdicts with confidence levels. Free to try, no signup required.</p>
+        </article>
+        <article class="utility-card utility-live">
+            <span class="utility-badge">Live</span>
+            <h3>Phase 2 — Shareable debate cards</h3>
+            <p>Download a social-sized PNG from any verdict — branded layout, smart summary so the decision is never cut off. Built for virality.</p>
+        </article>
+        <article class="utility-card utility-next">
+            <span class="utility-badge utility-badge-soon">Next</span>
+            <h3>Phase 3 — Competitive debates</h3>
+            <p>Reputation scoring, outcome tracking, and high-signal debate channels for users who want deeper, more competitive sessions.</p>
+        </article>
+        <article class="utility-card utility-live">
+            <span class="utility-badge">Live</span>
+            <h3>Phase 4 — Metrics dashboard</h3>
+            <p>Public <a href="https://app.dissensus.fun/metrics" target="_blank" rel="noopener noreferrer" class="text-link">transparency metrics</a> — debate counts, provider breakdown, recent topics. Full accountability, fully public.</p>
+        </article>
+        <article class="utility-card utility-planned">
+            <span class="utility-badge utility-badge-muted">Planned</span>
+            <h3>Phase 5 — Developer API</h3>
+            <p>Custom agent personalities, private debate sessions, deep research mode, and full API access for developers and power users.</p>
+        </article>
+    </div>
+    <div class="utility-actions">
+        <a href="https://app.dissensus.fun/metrics" class="btn-secondary" target="_blank" rel="noopener noreferrer">📊 Open metrics dashboard</a>
+        <a href="https://app.dissensus.fun" class="btn-primary" target="_blank" rel="noopener noreferrer">🚀 Launch debate engine</a>
+    </div>
+</section>
+
+<!-- ============ ACCESS TIERS ============ -->
+<section id="staking">
+    <p class="section-label">Access tiers</p>
+    <h2 class="section-title">Start free. Go deeper<br>as you level up.</h2>
+    <p class="section-desc">
+        Dissensus is free to try. As the platform grows, deeper access unlocks for power users — more daily debates, debate history, custom topics, and premium AI models.
+    </p>
+    <div class="tier-table-wrap">
+        <table class="tier-table">
+            <thead>
+                <tr>
+                    <th>Tier</th>
+                    <th>Access level</th>
+                    <th>Debates / day</th>
+                    <th>Highlights</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="tier-pill tier-pill-free">FREE</span></td>
+                    <td>Open access</td>
+                    <td>1</td>
+                    <td>Full 4-phase debates</td>
+                </tr>
+                <tr>
+                    <td><span class="tier-pill tier-pill-bronze">BRONZE</span></td>
+                    <td>Community</td>
+                    <td>5</td>
+                    <td>+ Debate history</td>
+                </tr>
+                <tr>
+                    <td><span class="tier-pill tier-pill-silver">SILVER</span></td>
+                    <td>Power user</td>
+                    <td>20</td>
+                    <td>+ Custom topics & priority</td>
+                </tr>
+                <tr>
+                    <td><span class="tier-pill tier-pill-gold">GOLD</span></td>
+                    <td>Pro</td>
+                    <td>Unlimited</td>
+                    <td>+ Premium models, API access</td>
+                </tr>
+                <tr>
+                    <td><span class="tier-pill tier-pill-whale">WHALE</span></td>
+                    <td>Elite</td>
+                    <td>Unlimited</td>
+                    <td>All features, early access</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="staking-footnote">
+        Start with one free debate. No signup required. Access expands as the platform grows.
+    </p>
+</section>
+
+<!-- ============ ROADMAP ============ -->
+<section id="roadmap">
+    <p class="section-label">Roadmap</p>
+    <h2 class="section-title">Building in public.<br>Every step.</h2>
+
+    <div class="roadmap">
+        <div class="roadmap-line"></div>
+        <div class="roadmap-line-progress" id="roadmapProgress"></div>
+
+        <div class="roadmap-item">
+            <div class="roadmap-dot active">🚀</div>
+            <div class="roadmap-content">
+                <p class="quarter">Live — Launch</p>
+                <h3>Brand & community</h3>
+                <p>Platform live. Brand established. Community growing on X (<a href="https://x.com/DissensusDev" target="_blank" rel="noopener noreferrer" class="text-link">@DissensusDev</a>). Debate engine open to everyone — no signup required.</p>
+            </div>
+        </div>
+
+        <div class="roadmap-item">
+            <div class="roadmap-dot active">🧠</div>
+            <div class="roadmap-content">
+                <p class="quarter">Live — Debate engine</p>
+                <h3>Platform & transparency</h3>
+                <p><a href="https://app.dissensus.fun" target="_blank" rel="noopener noreferrer" class="text-link">app.dissensus.fun</a> — 4-phase debates (CIPHER, NOVA, PRISM), real-time web research, shareable verdict cards, public <a href="https://app.dissensus.fun/metrics" target="_blank" rel="noopener noreferrer" class="text-link">metrics dashboard</a>. Access tiers launching next.</p>
+            </div>
+        </div>
+
+        <div class="roadmap-item">
+            <div class="roadmap-dot">🔥</div>
+            <div class="roadmap-content">
+                <p class="quarter">Q1 2026</p>
+                <h3>Growth & premium</h3>
+                <p>Custom agent personalities. Deep Research Mode for power users. API beta for developers. Mobile-optimized UI. Media partnerships and creator collaborations.</p>
+            </div>
+        </div>
+
+        <div class="roadmap-item">
+            <div class="roadmap-dot">🏛️</div>
+            <div class="roadmap-content">
+                <p class="quarter">Q2 2026</p>
+                <h3>Scale & integrations</h3>
+                <p>Community governance over new agents and features. Revenue sharing model. Developer ecosystem. Dissensus becomes the standard for AI-powered adversarial analysis.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="cta-section" id="launch">
+    <div class="cta-glow"></div>
+    <h2 class="cta-title">Ready to find<br><span style="background: linear-gradient(135deg, #8B5CF6, #00D4FF, #00FF88); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">the truth?</span></h2>
+    <p class="cta-desc">Three AI minds are waiting for your first question. Submit any topic. Get the verdict.</p>
+    <div class="cta-buttons">
+        <a href="https://app.dissensus.fun" class="btn-launch-hero" target="_blank">🚀 Launch Debate Engine</a>
+        <a href="https://x.com/DissensusDev" class="btn-secondary" target="_blank">🐦 Follow on X</a>
+        <a href="#" class="btn-secondary" target="_blank">💬 Join Telegram</a>
+    </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+    <div class="footer-links">
+        <a href="#about">About</a>
+        <a href="#agents">Agents</a>
+        <a href="#how">How It Works</a>
+        <a href="#platform">Platform</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="https://app.dissensus.fun" target="_blank">🚀 Launch App</a>
+        <a href="https://x.com/DissensusDev" target="_blank">X / Twitter</a>
+    </div>
+    <p class="footer-copy">
+        ⚡ Dissensus — Where Disagreement Forges Truth | Debate Engine Now Open<br>
+        <span style="margin-top: 0.5rem; display: inline-block;">Not financial advice. For informational and entertainment purposes only.</span>
+    </p>
+</footer>
+
+<script>
+// Mobile nav toggle
+function toggleMobileNav() {
+    const links = document.getElementById('navLinks');
+    const overlay = document.getElementById('navOverlay');
+    const toggle = document.getElementById('navToggle');
+    links.classList.toggle('open');
+    overlay.classList.toggle('visible');
+    toggle.classList.toggle('active');
+    document.body.style.overflow = links.classList.contains('open') ? 'hidden' : '';
+}
+// Close nav when clicking a link
+document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', () => {
+        if (window.innerWidth <= 768) toggleMobileNav();
+    });
+});
+
+// Intersection Observer for scroll animations
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+if (!prefersReducedMotion) {
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('anim-visible');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.08, rootMargin: '0px 0px -30px 0px' });
+
+    document.querySelectorAll('.what-card, .agent-card, .phase-card, .evo-card, .roadmap-item').forEach(el => {
+        const siblings = Array.from(el.parentElement.children);
+        const idx = siblings.indexOf(el);
+        el.style.transitionDelay = idx * 0.08 + 's';
+        el.classList.add('anim-hidden');
+        observer.observe(el);
+    });
+}
+
+// Smooth scroll for nav links
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function(e) {
+        const href = this.getAttribute('href');
+        if (!href || href === '#') return;
+        e.preventDefault();
+        const target = document.querySelector(href);
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    });
+});
+
+// Nav background on scroll
+window.addEventListener('scroll', () => {
+    const nav = document.querySelector('.nav');
+    if (window.scrollY > 50) {
+        nav.style.background = 'rgba(0, 0, 0, 0.95)';
+    } else {
+        nav.style.background = 'rgba(0, 0, 0, 0.8)';
+    }
+});
+
+// Roadmap progress line
+const roadmapObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        const progress = document.getElementById('roadmapProgress');
+        if (!progress) return;
+        if (entry.isIntersecting) {
+            progress.style.height = entry.target.offsetHeight + 'px';
+        } else {
+            progress.style.height = '0';
+        }
+    });
+}, { threshold: 0.1 });
+const roadmapEl = document.querySelector('.roadmap');
+if (roadmapEl) roadmapObserver.observe(roadmapEl);
+</script>
+
+</body>
+</html>

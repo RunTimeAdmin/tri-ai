@@ -15,11 +15,11 @@
 
 ## Update Summary
 **Changes Made**
-- Added comprehensive debate persistence layer with automatic ID generation
-- Enhanced SSE endpoint with real-time debate recording and storage
-- Integrated debate retrieval and listing APIs for saved debates
-- Improved error handling and client-side debate loading capabilities
-- Added debate sharing functionality with persistent URLs
+- Enhanced debate streaming with comprehensive abort controller integration for improved connection management
+- Implemented bidirectional signal propagation between client and server for graceful cancellation
+- Added robust resource cleanup mechanisms for disconnected clients
+- Improved error handling and timeout management across streaming endpoints
+- Enhanced SSE endpoint with better connection lifecycle management
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -33,10 +33,10 @@
 9. [Conclusion](#conclusion)
 
 ## Introduction
-This document explains the real-time streaming architecture powering the debate interface. The system uses Server-Sent Events (SSE) to stream structured debate events from the backend to the browser in near real-time. The debate process is orchestrated by a multi-agent system that executes four distinct phases, emitting typed events that drive the dynamic UI updates. The architecture emphasizes asynchronous execution, parallel agent processing, and robust client-server communication protocols. **Updated** with automatic debate persistence, debate ID generation, and improved error handling capabilities.
+This document explains the real-time streaming architecture powering the debate interface. The system uses Server-Sent Events (SSE) to stream structured debate events from the backend to the browser in near real-time. The debate process is orchestrated by a multi-agent system that executes four distinct phases, emitting typed events that drive the dynamic UI updates. The architecture emphasizes asynchronous execution, parallel agent processing, and robust client-server communication protocols with comprehensive abort controller integration for improved connection management and resource cleanup.
 
 ## Project Structure
-The streaming system spans the backend Express server, the debate engine orchestrator, the debate persistence layer, and the frontend client that renders real-time updates.
+The streaming system spans the backend Express server, the debate engine orchestrator, the debate persistence layer, and the frontend client that renders real-time updates with enhanced connection management.
 
 ```mermaid
 graph TB
@@ -84,12 +84,12 @@ NGINX --> |"proxy_buffering off"| S
 - [index.html:1-183](file://dissensus-engine/public/index.html#L1-L183)
 
 ## Core Components
-- Backend Express server with SSE endpoint for streaming debate events and debate persistence APIs.
-- Debate engine orchestrator that manages four phases and emits typed events.
-- Multi-agent personalities that provide distinct reasoning styles and roles.
-- **New** Debate persistence layer that automatically saves completed debates with unique IDs.
-- Frontend client controller that parses SSE chunks, updates the UI in real-time, and loads saved debates.
-- Infrastructure configuration to support SSE streaming without buffering.
+- Backend Express server with SSE endpoint for streaming debate events and debate persistence APIs, featuring comprehensive abort controller integration.
+- Debate engine orchestrator that manages four phases and emits typed events with bidirectional signal propagation for graceful cancellation.
+- Multi-agent personalities that provide distinct reasoning styles and roles, with per-call timeout management and signal coordination.
+- Debate persistence layer that automatically saves completed debates with unique IDs for later retrieval.
+- Frontend client controller that parses SSE chunks, updates the UI in real-time, loads saved debates, and implements robust connection management.
+- Infrastructure configuration to support SSE streaming without buffering and enhanced connection lifecycle management.
 
 Key streaming event types emitted by the backend:
 - debate-start: Initial event with topic, provider, and model.
@@ -99,8 +99,8 @@ Key streaming event types emitted by the backend:
 - agent-done: Indicates completion of an agent's contribution in a phase.
 - phase-done: Marks the end of a phase.
 - debate-done: Final event containing the synthesized verdict.
-- error: Emits error messages when exceptions occur.
-- **New** done: Final event containing the debate ID for sharing and retrieval.
+- error: Emits error messages when exceptions occur or client disconnects.
+- done: Final event containing the debate ID for sharing and retrieval.
 
 **Section sources**
 - [index.js:156-256](file://dissensus-engine/server/index.js#L156-L256)
@@ -108,10 +108,10 @@ Key streaming event types emitted by the backend:
 - [app.js:331-399](file://dissensus-engine/public/js/app.js#L331-L399)
 
 ## Architecture Overview
-The streaming architecture follows a producer-consumer pattern with integrated persistence:
-- Producer: The debate engine emits structured events during each phase.
-- Transport: Express server writes SSE-formatted data to the client and accumulates debate data for persistence.
-- Consumer: The client reads the stream, parses events, updates the UI, and receives the debate ID for sharing.
+The streaming architecture follows a producer-consumer pattern with integrated persistence and comprehensive connection management:
+- Producer: The debate engine emits structured events during each phase with bidirectional signal propagation.
+- Transport: Express server writes SSE-formatted data to the client with enhanced abort controller integration and accumulates debate data for persistence.
+- Consumer: The client reads the stream, parses events, updates the UI, receives the debate ID for sharing, and implements robust connection lifecycle management.
 - Persistence: Completed debates are automatically saved with unique IDs for later retrieval.
 
 ```mermaid
@@ -125,7 +125,7 @@ Browser->>Client : User clicks "Start Debate"
 Client->>Server : GET /api/debate/validate (preflight)
 Server-->>Client : OK or error
 Client->>Server : GET /api/debate/stream?topic&provider&model&apiKey
-Server->>Engine : new DebateEngine(...) and runDebate(...)
+Server->>Engine : new DebateEngine(...) and runDebate(topic, sendEvent, disconnectController.signal)
 loop For each agent and phase
 Engine->>Server : emit('phase-start'|'agent-start'|'agent-chunk')
 Server->>Store : accumulate debateRecord.phases.push({type,...})
@@ -144,14 +144,14 @@ Server-->>Client : data : [DONE]\n\n
 
 **Diagram sources**
 - [app.js:209-420](file://dissensus-engine/public/js/app.js#L209-L420)
-- [index.js:156-256](file://dissensus-engine/server/index.js#L156-L256)
+- [index.js:183-256](file://dissensus-engine/server/index.js#L183-L256)
 - [debate-engine.js:121-399](file://dissensus-engine/server/debate-engine.js#L121-L399)
 - [debate-store.js:19-33](file://dissensus-engine/server/debate-store.js#L19-L33)
 
 ## Detailed Component Analysis
 
-### Backend SSE Endpoint with Persistence
-The SSE endpoint sets appropriate headers, validates inputs, streams events to clients, and automatically persists completed debates with unique IDs. It aborts streaming if the client disconnects and records metrics on success or error.
+### Backend SSE Endpoint with Enhanced Abort Controller Integration
+The SSE endpoint sets appropriate headers, validates inputs, streams events to clients with comprehensive abort controller integration, and automatically persists completed debates with unique IDs. It implements bidirectional signal propagation for graceful cancellation and improved resource cleanup.
 
 ```mermaid
 flowchart TD
@@ -159,55 +159,58 @@ Start(["GET /api/debate/stream"]) --> Validate["Validate topic/provider/model/ke
 Validate --> Headers["Set SSE headers:<br/>Content-Type: text/event-stream<br/>Cache-Control: no-cache<br/>Connection: keep-alive<br/>X-Accel-Buffering: no"]
 Headers --> CreateEngine["Instantiate DebateEngine"]
 CreateEngine --> InitRecord["Initialize debateRecord with topic, provider, model, timestamp"]
-InitRecord --> Run["engine.runDebate(topic, sendEvent)"]
-Run --> Emit["sendEvent(type, data)"]
+InitRecord --> AbortController["Create AbortController for disconnect detection"]
+AbortController --> DisconnectHandler["Setup req.on('close', ...) to abort"]
+InitRecord --> Run["engine.runDebate(topic, sendEvent, disconnectController.signal)"]
+Run --> Emit["sendEvent(type, data) with PERSIST_EVENTS filtering"]
 Emit --> Accumulate["Accumulate debateRecord.phases.push({type,...})"]
 Accumulate --> Done{"Client still connected?"}
-Done --> |No| Close["End stream"]
+Done --> |No| AbortCleanup["aborted = true; disconnectController.abort()"]
+AbortCleanup --> Cleanup["Cleanup resources and stop streaming"]
 Done --> |Yes| Continue["Continue streaming"]
 Continue --> Run
-Close --> Save["saveDebate(debateRecord) -> debateId"]
+Cleanup --> Save["saveDebate(debateRecord) -> debateId"]
 Save --> Record["Record debate success"]
 Record --> SendDone["Send {type: 'done', debateId}"]
 SendDone --> End(["Send [DONE] and close"])
 ```
 
 **Diagram sources**
-- [index.js:183-256](file://dissensus-engine/server/index.js#L183-L256)
+- [index.js:334-445](file://dissensus-engine/server/index.js#L334-L445)
 
 **Section sources**
-- [index.js:183-256](file://dissensus-engine/server/index.js#L183-L256)
+- [index.js:334-445](file://dissensus-engine/server/index.js#L334-L445)
 
-### Debate Engine Orchestration
-The debate engine coordinates four phases and emits typed events. It performs parallel processing for Phase 1 and streams agent responses incrementally.
+### Debate Engine Orchestration with Bidirectional Signal Propagation
+The debate engine coordinates four phases and emits typed events with comprehensive signal propagation for graceful cancellation. It performs parallel processing for Phase 1 and streams agent responses incrementally with per-call timeout management.
 
 ```mermaid
 flowchart TD
-Start(["runDebate(topic, sendEvent)"]) --> EmitStart["emit('debate-start')"]
+Start(["runDebate(topic, sendEvent, signal)"]) --> EmitStart["emit('debate-start')"]
 EmitStart --> Phase1["Phase 1: Independent Analysis<br/>Promise.all(['cipher','nova','prism'])"]
-Phase1 --> P1Chunks["emit('agent-chunk') for each delta"]
+Phase1 --> P1Chunks["emit('agent-chunk') for each delta<br/>with signal propagation"]
 P1Chunks --> P1Done["emit('agent-done') per agent"]
-P1Done --> Phase2["Phase 2: Opening Arguments<br/>Sequential per agent"]
-Phase2 --> P2Chunks["emit('agent-chunk') for each delta"]
+P1Done --> Phase2["Phase 2: Opening Arguments<br/>Sequential per agent<br/>with signal checks"]
+Phase2 --> P2Chunks["emit('agent-chunk') for each delta<br/>with signal propagation"]
 P2Chunks --> P2Done["emit('agent-done') per agent"]
-P2Done --> Phase3["Phase 3: Cross-Examination<br/>Agent vs Agent challenges"]
-Phase3 --> P3Chunks["emit('agent-chunk') for each delta"]
+P2Done --> Phase3["Phase 3: Cross-Examination<br/>Agent vs Agent challenges<br/>with signal coordination"]
+Phase3 --> P3Chunks["emit('agent-chunk') for each delta<br/>with signal propagation"]
 P3Chunks --> P3Done["emit('agent-done') per agent"]
-P3Done --> Phase4["Phase 4: Final Verdict<br/>PRISM synthesizes"]
-Phase4 --> P4Chunks["emit('agent-chunk') for each delta"]
+P3Done --> Phase4["Phase 4: Final Verdict<br/>PRISM synthesizes<br/>with signal checks"]
+Phase4 --> P4Chunks["emit('agent-chunk') for each delta<br/>with signal propagation"]
 P4Chunks --> P4Done["emit('agent-done') per agent"]
 P4Done --> EmitDone["emit('debate-done')"]
 EmitDone --> End(["Return context"])
 ```
 
 **Diagram sources**
-- [debate-engine.js:131-399](file://dissensus-engine/server/debate-engine.js#L131-L399)
+- [debate-engine.js:168-466](file://dissensus-engine/server/debate-engine.js#L168-L466)
 
 **Section sources**
-- [debate-engine.js:131-399](file://dissensus-engine/server/debate-engine.js#L131-L399)
+- [debate-engine.js:168-466](file://dissensus-engine/server/debate-engine.js#L168-L466)
 
-### Agent System
-Agents define distinct personalities and system prompts. The engine invokes each agent with tailored prompts per phase and streams incremental chunks.
+### Agent System with Per-Call Timeout Management
+Agents define distinct personalities and system prompts with comprehensive timeout management. The engine invokes each agent with tailored prompts per phase, streams incremental chunks, and implements per-call abort controller integration.
 
 ```mermaid
 classDiagram
@@ -217,58 +220,35 @@ class AGENTS {
 +prism
 }
 class DebateEngine {
-+callAgent(agentId, messages, onChunk)
-+runDebate(topic, sendEvent)
++callAgent(agentId, messages, onChunk, signal)
++runDebate(topic, sendEvent, signal)
+}
+class AbortController {
++abort()
++signal
 }
 AGENTS <.. DebateEngine : "uses"
+AbortController <.. DebateEngine : "creates per call"
 ```
 
 **Diagram sources**
 - [agents.js:8-148](file://dissensus-engine/server/agents.js#L8-L148)
-- [debate-engine.js:58-116](file://dissensus-engine/server/debate-engine.js#L58-L116)
+- [debate-engine.js:66-163](file://dissensus-engine/server/debate-engine.js#L66-L163)
 
 **Section sources**
 - [agents.js:8-148](file://dissensus-engine/server/agents.js#L8-L148)
-- [debate-engine.js:58-116](file://dissensus-engine/server/debate-engine.js#L58-L116)
+- [debate-engine.js:66-163](file://dissensus-engine/server/debate-engine.js#L66-L163)
 
-### Debate Persistence Layer
-**New** The debate persistence layer automatically saves completed debates to disk with unique IDs and provides retrieval and listing capabilities.
-
-```mermaid
-flowchart TD
-Save["saveDebate(debateData)"] --> Ensure["ensureDir()"]
-Ensure --> Generate["Generate UUID"]
-Generate --> Create["Create record with id, topic, provider, model, timestamp, phases"]
-Create --> Write["Write to JSON file"]
-Write --> Return["Return debateId"]
-Get["getDebate(id)"] --> Validate["Validate UUID format"]
-Validate --> Check["Check file existence"]
-Check --> Exists{"File exists?"}
-Exists --> |No| Null["Return null"]
-Exists --> |Yes| Parse["Parse JSON file"]
-Parse --> ReturnObj["Return debate object"]
-List["listRecent(limit)"] --> Read["Read all JSON files"]
-Read --> Filter["Filter valid files"]
-Filter --> Sort["Sort by timestamp desc"]
-Sort --> Slice["Slice to limit"]
-Slice --> ReturnList["Return metadata array"]
-```
-
-**Diagram sources**
-- [debate-store.js:19-80](file://dissensus-engine/server/debate-store.js#L19-L80)
-
-**Section sources**
-- [debate-store.js:19-80](file://dissensus-engine/server/debate-store.js#L19-L80)
-
-### Frontend Streaming Controller with Saved Debate Loading
-The client establishes a streaming connection using fetch with manual parsing of SSE chunks. It handles each event type to update the UI progressively and can load saved debates by ID.
+### Frontend Streaming Controller with Enhanced Connection Management
+The client establishes a streaming connection using fetch with manual parsing of SSE chunks and comprehensive abort controller integration. It handles each event type to update the UI progressively, implements robust timeout management, and can load saved debates by ID.
 
 ```mermaid
 sequenceDiagram
 participant Client as "Client Controller<br/>app.js"
 participant Stream as "SSE Stream"
 participant Engine as "Debate Engine"
-Client->>Stream : fetch("/api/debate/stream?...")
+Client->>Stream : fetch("/api/debate/stream?...", {signal : controller.signal})
+Note over Client,Stream : Setup AbortController with 10-minute timeout
 loop Read stream
 Stream-->>Client : data : {"type" : "phase-start","phase" : 1}
 Client->>Client : handleDebateEvent("phase-start")
@@ -285,74 +265,76 @@ Stream-->>Client : data : {"type" : "debate-done","verdict" : "..."}
 Client->>Client : handleDebateEvent("debate-done")
 Stream-->>Client : data : [DONE]
 Client->>Client : debateComplete()
+Note over Client : Auto-abort after 10 minutes timeout
 ```
 
 **Diagram sources**
-- [app.js:209-420](file://dissensus-engine/public/js/app.js#L209-L420)
+- [app.js:340-417](file://dissensus-engine/public/js/app.js#L340-L417)
 - [app.js:331-399](file://dissensus-engine/public/js/app.js#L331-L399)
 
 **Section sources**
-- [app.js:209-420](file://dissensus-engine/public/js/app.js#L209-L420)
+- [app.js:340-417](file://dissensus-engine/public/js/app.js#L340-L417)
 - [app.js:331-399](file://dissensus-engine/public/js/app.js#L331-L399)
 
-### Event Types and Data Flow
+### Enhanced Event Types and Data Flow
 - debate-start: Provides topic, provider, and model for context.
 - phase-start: Supplies phase metadata (title, description).
 - agent-start: Identifies the speaking agent and phase.
-- agent-chunk: Streams incremental text deltas; client appends and renders.
+- agent-chunk: Streams incremental text deltas with signal propagation; client appends and renders.
 - agent-done: Marks agent completion; client stops typing indicator.
 - phase-done: Indicates phase completion; client marks step as done.
 - debate-done: Delivers the final verdict; client reveals the verdict panel.
-- error: Emits server-side errors; client displays user-friendly messages.
-- **New** done: Contains the debate ID for sharing and future retrieval.
+- error: Emits server-side errors or client disconnect notifications; client displays user-friendly messages.
+- done: Contains the debate ID for sharing and future retrieval.
 
 **Section sources**
 - [debate-engine.js:130-399](file://dissensus-engine/server/debate-engine.js#L130-L399)
 - [app.js:331-399](file://dissensus-engine/public/js/app.js#L331-L399)
 
-### Asynchronous Execution and Parallel Processing
-- Phase 1: Parallel execution of all three agents using Promise.all to maximize throughput.
-- Phase 2: Sequential per-agent execution to preserve argument structure.
-- Phase 3: Agent-to-agent challenges with independent streaming per agent.
-- Phase 4: Final statements and PRISM's verdict, streamed incrementally.
+### Asynchronous Execution and Parallel Processing with Signal Coordination
+- Phase 1: Parallel execution of all three agents using Promise.all with comprehensive signal propagation to maximize throughput.
+- Phase 2: Sequential per-agent execution with signal checks to preserve argument structure and enable graceful cancellation.
+- Phase 3: Agent-to-agent challenges with independent streaming per agent and coordinated signal management.
+- Phase 4: Final statements and PRISM's verdict, streamed incrementally with signal propagation for timeout handling.
+- Per-call timeout: Each agent call has a 90-second timeout with AbortController integration for resource cleanup.
 
 **Section sources**
 - [debate-engine.js:162-172](file://dissensus-engine/server/debate-engine.js#L162-L172)
 - [debate-engine.js:185-211](file://dissensus-engine/server/debate-engine.js#L185-L211)
 - [debate-engine.js:220-294](file://dissensus-engine/server/debate-engine.js#L220-L294)
 
-### Real-Time Data Aggregation with Persistence
-- The engine aggregates agent outputs per phase into a debate context object.
-- The final verdict synthesizes all prior phases into a structured, confidence-weighted conclusion.
-- **New** The server automatically accumulates all events in debateRecord.phases for persistence.
-- **New** Completed debates are saved with unique UUIDs for later retrieval and sharing.
+### Real-Time Data Aggregation with Enhanced Persistence
+- The engine aggregates agent outputs per phase into a debate context object with signal-aware processing.
+- The final verdict synthesizes all prior phases into a structured, confidence-weighted conclusion with timeout safety checks.
+- The server automatically accumulates all events in debateRecord.phases for persistence with PERSIST_EVENTS filtering.
+- Completed debates are saved with unique UUIDs for later retrieval and sharing.
 
 **Section sources**
 - [debate-engine.js:132-138](file://dissensus-engine/server/debate-engine.js#L132-L138)
 - [debate-engine.js:350-390](file://dissensus-engine/server/debate-engine.js#L350-L390)
-- [index.js:220-247](file://dissensus-engine/server/index.js#L220-L247)
+- [index.js:410-436](file://dissensus-engine/server/index.js#L410-L436)
 
-### Client-Side Event Handling and UI Updates
-- The client maintains per-agent buffers for each phase and renders markdown progressively.
-- UI states reflect speaking/waiting/done for agents and active/done for phases.
-- The verdict panel appears after receiving the final event.
-- **New** The client can load saved debates by ID from the URL query parameter.
-- **New** The client updates the URL with the debate ID for sharing purposes.
+### Client-Side Event Handling and UI Updates with Enhanced Connection Management
+- The client maintains per-agent buffers for each phase and renders markdown progressively with signal-aware processing.
+- UI states reflect speaking/waiting/done for agents and active/done for phases with timeout handling.
+- The verdict panel appears after receiving the final event with comprehensive error recovery.
+- The client implements robust connection lifecycle management with 10-minute timeout and AbortController integration.
+- The client can load saved debates by ID from the URL query parameter with enhanced error handling.
 
 **Section sources**
 - [app.js:164-206](file://dissensus-engine/public/js/app.js#L164-L206)
 - [app.js:331-399](file://dissensus-engine/public/js/app.js#L331-L399)
 - [app.js:434-482](file://dissensus-engine/public/js/app.js#L434-L482)
 
-### Example: Client-Side Streaming UI Updates
-- On agent-chunk: Append chunk to agent's phase text and render markdown.
-- On agent-start: Mark agent as speaking and initialize phase block.
-- On agent-done: Stop typing animation and finalize content.
-- On phase-start: Activate current phase and reset agent statuses.
-- On phase-done: Mark previous phases as done and clear speaking states.
-- On debate-done: Populate verdict panel and scroll into view.
-- **New** On done: Store debate ID, update URL, and show share button.
-- **New** On saved debate load: Replay all events to reconstruct UI state.
+### Example: Client-Side Streaming UI Updates with Enhanced Error Handling
+- On agent-chunk: Append chunk to agent's phase text and render markdown with signal awareness.
+- On agent-start: Mark agent as speaking and initialize phase block with timeout protection.
+- On agent-done: Stop typing animation and finalize content with resource cleanup.
+- On phase-start: Activate current phase and reset agent statuses with error recovery.
+- On phase-done: Mark previous phases as done and clear speaking states with timeout handling.
+- On debate-done: Populate verdict panel and scroll into view with comprehensive error handling.
+- On error: Handle server-side errors or client disconnect notifications with user-friendly messaging.
+- On done: Store debate ID, update URL, show share button, and implement timeout cleanup.
 
 **Section sources**
 - [app.js:331-399](file://dissensus-engine/public/js/app.js#L331-L399)
@@ -360,11 +342,11 @@ Client->>Client : debateComplete()
 - [app.js:434-482](file://dissensus-engine/public/js/app.js#L434-L482)
 
 ## Dependency Analysis
-The streaming pipeline exhibits clear separation of concerns with integrated persistence:
-- index.js depends on debate-engine.js, metrics.js, and debate-store.js.
-- debate-engine.js depends on agents.js and provider configurations.
-- app.js depends on index.html for DOM structure and interacts with index.js endpoints.
-- **New** debate-store.js provides file-based persistence for completed debates.
+The streaming pipeline exhibits clear separation of concerns with integrated persistence and comprehensive signal propagation:
+- index.js depends on debate-engine.js, metrics.js, and debate-store.js with enhanced abort controller integration.
+- debate-engine.js depends on agents.js and provider configurations with bidirectional signal propagation.
+- app.js depends on index.html for DOM structure and interacts with index.js endpoints with robust connection management.
+- The system implements comprehensive signal coordination between client and server for graceful cancellation.
 
 ```mermaid
 graph LR
@@ -389,12 +371,13 @@ DEBATESTOREJS --> FS["Node FS Module"]
 
 ## Performance Considerations
 - SSE streaming: Nginx disables buffering for the streaming endpoint to ensure low-latency delivery.
-- Timeout handling: The client enforces a 5-minute debate timeout to prevent resource exhaustion.
-- Chunked decoding: The client decodes stream chunks incrementally and renders markdown progressively.
-- Parallelism: Phase 1 runs agents concurrently to reduce total debate time.
-- Rate limiting: The server applies rate limits to protect resources.
-- **New** Persistence overhead: Debate data is accumulated in memory during streaming and written to disk upon completion.
-- **New** File I/O: Debate persistence uses synchronous file operations for simplicity, with automatic directory creation.
+- Timeout handling: The client enforces a 10-minute debate timeout and the server implements 90-second per-call timeouts for resource efficiency.
+- Chunked decoding: The client decodes stream chunks incrementally and renders markdown progressively with signal awareness.
+- Parallelism: Phase 1 runs agents concurrently to reduce total debate time with comprehensive signal coordination.
+- Rate limiting: The server applies rate limits to protect resources with enhanced connection management.
+- Abort controller integration: Bidirectional signal propagation enables graceful cancellation and resource cleanup.
+- Persistence overhead: Debate data is accumulated in memory during streaming and written to disk upon completion.
+- File I/O: Debate persistence uses synchronous file operations for simplicity, with automatic directory creation.
 
 **Section sources**
 - [nginx-dissensus.conf:42-60](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L42-L60)
@@ -405,20 +388,23 @@ DEBATESTOREJS --> FS["Node FS Module"]
 ## Troubleshooting Guide
 Common issues and resolutions:
 - SSE buffering: Ensure Nginx proxy disables buffering for /api/debate/stream.
-- Connection timeouts: The client aborts after 5 minutes; shorten topic length or switch providers.
+- Connection timeouts: The client aborts after 10 minutes; the server implements 90-second per-call timeouts; shorten topic length or switch providers.
 - Validation errors: Use preflight validation to catch missing or invalid parameters.
 - API key errors: Verify provider keys or enable server-side keys for production.
-- Client disconnections: The server detects closure and stops streaming.
-- **New** Persistence failures: Check that the data directory exists and is writable.
-- **New** Debate loading errors: Verify debate ID format and file existence.
-- **New** Share URL issues: Ensure the debate ID is properly encoded in the URL.
+- Client disconnections: The server detects closure via disconnectController and stops streaming gracefully.
+- Signal propagation: Verify bidirectional signal coordination between client and server for proper cancellation.
+- Resource cleanup: Monitor for proper cleanup of AbortController instances and timeout handlers.
+- Persistence failures: Check that the data directory exists and is writable.
+- Debate loading errors: Verify debate ID format and file existence.
+- Share URL issues: Ensure the debate ID is properly encoded in the URL.
 
 Debugging steps:
-- Inspect browser Network tab for SSE stream and status codes.
-- Check server logs for error events and rate limit triggers.
-- Confirm infrastructure proxy settings for streaming.
-- **New** Verify data directory permissions for debate persistence.
-- **New** Check JSON file integrity for saved debates.
+- Inspect browser Network tab for SSE stream and status codes with connection lifecycle monitoring.
+- Check server logs for error events, rate limit triggers, and signal propagation issues.
+- Confirm infrastructure proxy settings for streaming with enhanced connection management.
+- Verify data directory permissions for debate persistence.
+- Check JSON file integrity for saved debates.
+- Monitor AbortController usage and signal propagation for proper resource cleanup.
 
 **Section sources**
 - [DEPLOY-VPS.md:284-366](file://dissensus-engine/docs/DEPLOY-VPS.md#L284-L366)
@@ -428,4 +414,4 @@ Debugging steps:
 - [debate-store.js:40-50](file://dissensus-engine/server/debate-store.js#L40-L50)
 
 ## Conclusion
-The real-time streaming architecture combines a robust SSE transport with a structured debate orchestration and integrated persistence to deliver a responsive, multi-agent debate experience. The system balances parallel processing with ordered event sequencing, enabling granular UI updates and a compelling user experience. **Updated** with automatic debate persistence, unique ID generation, and improved error handling, the system now supports debate sharing and retrieval capabilities. Proper infrastructure configuration, client-side handling, and persistence layer ensure reliable streaming with the ability to revisit past debates. Metrics and error handling support operational visibility and resilience, while the new persistence layer enables long-term debate archival and sharing.
+The real-time streaming architecture combines a robust SSE transport with a structured debate orchestration, integrated persistence, and comprehensive abort controller integration to deliver a responsive, multi-agent debate experience. The system balances parallel processing with ordered event sequencing, enabling granular UI updates and a compelling user experience. Enhanced abort controller integration provides improved connection management, bidirectional signal propagation enables graceful cancellation, and comprehensive resource cleanup ensures efficient operation. The system now supports debate sharing and retrieval capabilities with robust error handling and timeout management. Proper infrastructure configuration, client-side handling with enhanced connection lifecycle management, and persistence layer ensure reliable streaming with the ability to revisit past debates. Metrics and error handling support operational visibility and resilience, while the new persistence layer enables long-term debate archival and sharing with comprehensive signal coordination between client and server.

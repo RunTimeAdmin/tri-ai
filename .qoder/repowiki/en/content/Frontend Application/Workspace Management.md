@@ -3,6 +3,7 @@
 <cite>
 **Referenced Files in This Document**
 - [workspace.js](file://dissensus-engine/server/workspace.js)
+- [db.js](file://dissensus-engine/server/db.js)
 - [index.js](file://dissensus-engine/server/index.js)
 - [auth.js](file://dissensus-engine/server/auth.js)
 - [debate-store.js](file://dissensus-engine/server/debate-store.js)
@@ -14,11 +15,19 @@
 - [index.html](file://dissensus-engine/public/index.html)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Updated data storage architecture from file-based JSON to SQLite database with foreign key constraints
+- Added comprehensive database schema documentation with table relationships
+- Updated system architecture diagrams to reflect database-backed operations
+- Enhanced security considerations with database integrity and foreign key enforcement
+- Updated troubleshooting guide with database-specific issues and solutions
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [System Architecture](#system-architecture)
 3. [Workspace Core Components](#workspace-core-components)
-4. [Data Storage and Persistence](#data-storage-and-persistence)
+4. [Database Schema and Relationships](#database-schema-and-relationships)
 5. [Authentication and Authorization](#authentication-and-authorization)
 6. [API Endpoints](#api-endpoints)
 7. [Frontend Integration](#frontend-integration)
@@ -31,11 +40,11 @@
 
 Workspace Management is a core feature of the Dissensus AI Debate Engine that enables users to organize and manage their debate activities within collaborative environments. This system provides personal workspaces for individual users and shared workspaces for team collaboration, allowing users to categorize debates, track contributions, and maintain organized debate histories.
 
-The workspace management system integrates seamlessly with the authentication system, debate persistence layer, and provides a foundation for future collaboration features. It supports both individual workspaces (personal default) and shared workspaces with role-based access control.
+The workspace management system has been modernized with a database-backed architecture using SQLite with foreign key constraints, providing improved performance, data integrity, and scalability compared to the previous file-based JSON storage system. The system integrates seamlessly with the authentication system, debate persistence layer, and provides a foundation for future collaboration features.
 
 ## System Architecture
 
-The workspace management system follows a modular architecture with clear separation of concerns:
+The workspace management system follows a modular architecture with clear separation of concerns and database-backed operations:
 
 ```mermaid
 graph TB
@@ -47,39 +56,42 @@ subgraph "Server Layer"
 API[REST API]
 WS[Workspace Service]
 AUTH[Authentication Service]
+DB[SQLite Database]
 DS[Debate Store]
 end
 subgraph "Data Layer"
-FS[File System]
-JSON[JSON Files]
-DATA[data/ Directory]
+SQL[SQLite Database]
+FK[Foreign Key Constraints]
+IDX[Index Optimization]
 end
 UI --> API
 Auth --> API
 API --> WS
 API --> AUTH
 API --> DS
-WS --> FS
-DS --> FS
-FS --> JSON
-JSON --> DATA
+WS --> DB
+AUTH --> DB
+DS --> SQL
+DB --> FK
+DB --> IDX
 ```
 
 **Diagram sources**
 - [index.js:18-18](file://dissensus-engine/server/index.js#L18-L18)
-- [workspace.js:1-58](file://dissensus-engine/server/workspace.js#L1-L58)
-- [auth.js:1-120](file://dissensus-engine/server/auth.js#L1-L120)
+- [workspace.js:1-39](file://dissensus-engine/server/workspace.js#L1-L39)
+- [auth.js:1-126](file://dissensus-engine/server/auth.js#L1-L126)
+- [db.js:1-47](file://dissensus-engine/server/db.js#L1-L47)
 
 The architecture consists of three main layers:
 - **Client Layer**: Web interface with authentication and workspace management capabilities
-- **Server Layer**: REST API endpoints, workspace service, authentication service, and debate storage
-- **Data Layer**: File-based storage using JSON format for persistent data
+- **Server Layer**: REST API endpoints, workspace service, authentication service, and debate storage with database integration
+- **Data Layer**: SQLite database with foreign key constraints and optimized indexes for performance
 
 ## Workspace Core Components
 
 ### Workspace Service
 
-The workspace service provides the core functionality for workspace creation, management, and retrieval:
+The workspace service provides the core functionality for workspace creation, management, and retrieval using database operations:
 
 ```mermaid
 classDiagram
@@ -87,10 +99,7 @@ class WorkspaceService {
 +createWorkspace(name, ownerId) Workspace
 +getWorkspace(id) Workspace
 +getUserWorkspaces(userId) Workspace[]
-+addMember(workspaceId, userId, role) Workspace
--loadWorkspaces() Workspace[]
--saveWorkspaces(workspaces) void
--ensureDir() void
++addMember(workspaceId, userId, role) boolean
 }
 class Workspace {
 +string id
@@ -103,155 +112,166 @@ class Member {
 +string userId
 +string role
 }
-WorkspaceService --> Workspace : "creates"
+class DatabaseLayer {
++prepare(sql) Statement
++exec(sql) void
++pragma(setting) void
+}
+WorkspaceService --> DatabaseLayer : "uses"
 Workspace --> Member : "contains"
 ```
 
 **Diagram sources**
-- [workspace.js:23-55](file://dissensus-engine/server/workspace.js#L23-L55)
+- [workspace.js:4-38](file://dissensus-engine/server/workspace.js#L4-L38)
+- [db.js:15-44](file://dissensus-engine/server/db.js#L15-L44)
 
-### Authentication Integration
+**Updated** The workspace service now operates entirely on database queries with automatic transaction handling and foreign key constraint enforcement.
 
-The workspace system integrates tightly with the authentication system to provide secure access control:
+### Database Integration
+
+The workspace system integrates with a centralized SQLite database that manages all user, workspace, and membership data:
 
 ```mermaid
 sequenceDiagram
 participant Client as "Client"
 participant Auth as "Auth Service"
 participant WS as "Workspace Service"
-participant Store as "File Store"
+participant DB as "SQLite Database"
 Client->>Auth : Register User
-Auth->>Auth : Create User Record
-Auth->>WS : Create Personal Workspace
-WS->>Store : Save Workspace Data
-Store-->>WS : Confirmation
-WS-->>Auth : Workspace Created
+Auth->>DB : INSERT users
+DB-->>Auth : User Created
+Auth->>DB : INSERT workspaces (auto-create)
+DB-->>Auth : Workspace Created
+Auth->>DB : INSERT workspace_members
+DB-->>Auth : Membership Added
 Auth-->>Client : User Registered
 Client->>Auth : Login User
-Auth->>Auth : Verify Credentials
+Auth->>DB : SELECT users WHERE email
+DB-->>Auth : User Found
 Auth-->>Client : Auth Token
 Client->>WS : Get User Workspaces
-WS->>Store : Load Workspace Data
-Store-->>WS : Workspace List
+WS->>DB : SELECT workspaces JOIN workspace_members
+DB-->>WS : Workspace List
 WS-->>Client : Workspaces
 ```
 
 **Diagram sources**
-- [auth.js:27-59](file://dissensus-engine/server/auth.js#L27-L59)
-- [index.js:221-231](file://dissensus-engine/server/index.js#L221-L231)
-- [workspace.js:12-21](file://dissensus-engine/server/workspace.js#L12-L21)
+- [auth.js:42-46](file://dissensus-engine/server/auth.js#L42-L46)
+- [index.js:302-305](file://dissensus-engine/server/index.js#L302-L305)
+- [workspace.js:19-29](file://dissensus-engine/server/workspace.js#L19-L29)
 
 **Section sources**
-- [workspace.js:1-58](file://dissensus-engine/server/workspace.js#L1-L58)
-- [auth.js:1-120](file://dissensus-engine/server/auth.js#L1-L120)
+- [workspace.js:1-39](file://dissensus-engine/server/workspace.js#L1-L39)
+- [auth.js:1-126](file://dissensus-engine/server/auth.js#L1-L126)
 
-## Data Storage and Persistence
+## Database Schema and Relationships
 
-### File Structure Organization
+### Database Schema
 
-The workspace management system uses a file-based storage approach with a clear directory structure:
+The workspace management system uses a relational database schema with foreign key constraints to ensure data integrity:
 
-```
-dissensus-engine/
-├── data/
-│   ├── users.json          # User account data
-│   ├── workspaces.json     # Workspace metadata
-│   └── debates/
-│       ├── [debate-id].json # Individual debate records
-│       └── ...
-└── server/
-    └── workspace.js        # Workspace service implementation
-```
-
-### Data Models
-
-The system maintains several key data structures:
-
-**Workspace Data Model:**
-```javascript
-{
-  id: "uuid-string",
-  name: "string",
-  ownerId: "uuid-string",
-  members: [
-    {
-      userId: "uuid-string",
-      role: "owner|member"
-    }
-  ],
-  createdAt: "iso-date-string"
+```mermaid
+erDiagram
+USERS {
+TEXT id PK
+TEXT email UK
+TEXT password
+TEXT name
+TEXT created_at
 }
+WORKSPACES {
+TEXT id PK
+TEXT name
+TEXT owner_id FK
+TEXT created_at
+}
+WORKSPACE_MEMBERS {
+TEXT workspace_id PK
+TEXT user_id PK
+TEXT role
+TEXT joined_at
+}
+USERS ||--o{ WORKSPACES : "owns"
+WORKSPACES ||--o{ WORKSPACE_MEMBERS : "has"
+USERS ||--o{ WORKSPACE_MEMBERS : "belongs_to"
 ```
 
-**User Data Model:**
-```javascript
-{
-  id: "uuid-string",
-  email: "string",
-  name: "string",
-  passwordHash: "string",
-  workspaceId: "uuid-string",
-  createdAt: "iso-date-string"
-}
-```
+**Diagram sources**
+- [db.js:16-40](file://dissensus-engine/server/db.js#L16-L40)
+
+### Table Definitions
+
+**Users Table**: Stores user account information with unique email addresses and timestamps.
+
+**Workspaces Table**: Contains workspace metadata with foreign key references to the owner user.
+
+**Workspace Members Table**: Manages membership relationships with composite primary keys and foreign key constraints.
+
+### Performance Optimizations
+
+The database includes several optimizations for improved performance:
+
+- **WAL Mode**: Write-Ahead Logging for better concurrent read performance
+- **Foreign Key Enforcement**: Automatic referential integrity checking
+- **Index Creation**: Optimized indexes on frequently queried columns
+- **Transaction Support**: Atomic operations for data consistency
 
 **Section sources**
-- [workspace.js:23-35](file://dissensus-engine/server/workspace.js#L23-L35)
-- [auth.js:46-53](file://dissensus-engine/server/auth.js#L46-L53)
+- [db.js:1-47](file://dissensus-engine/server/db.js#L1-L47)
 
 ## Authentication and Authorization
 
 ### Role-Based Access Control
 
-The workspace system implements a simple but effective role-based access control system:
+The workspace system implements a robust role-based access control system with database-backed enforcement:
 
-| Role | Permissions | Description |
-|------|-------------|-------------|
-| **Owner** | Full access | Can manage members, delete workspace, access all debates |
-| **Member** | Limited access | Can view and participate in debates within workspace |
+| Role | Permissions | Database Enforcement |
+|------|-------------|---------------------|
+| **Owner** | Full access, member management | Foreign key constraints on workspace ownership |
+| **Member** | Limited access to workspace debates | Membership verification through JOIN queries |
 
 ### Authentication Flow
 
 ```mermaid
 flowchart TD
-Start([User Registration]) --> CreateWorkspace["Create Personal Workspace"]
-CreateWorkspace --> StoreWorkspace["Store Workspace Data"]
-StoreWorkspace --> RegisterUser["Register User Account"]
-RegisterUser --> LoginUser["User Login"]
-LoginUser --> ValidateCredentials["Validate Credentials"]
-ValidateCredentials --> GenerateToken["Generate JWT Token"]
+Start([User Registration]) --> CreateUser["INSERT INTO users"]
+CreateUser --> CreateWorkspace["INSERT INTO workspaces (auto-create)"]
+CreateWorkspace --> AddMembership["INSERT INTO workspace_members"]
+AddMembership --> GenerateToken["Generate JWT Token"]
 GenerateToken --> StoreToken["Store Token"]
 StoreToken --> AccessWorkspaces["Access Workspaces"]
-AccessWorkspaces --> ViewDebates["View Workspace Debates"]
-ViewDebates --> ManageAccess{"Has Required Permissions?"}
-ManageAccess --> |Yes| PerformAction["Perform Action"]
-ManageAccess --> |No| DenyAccess["Deny Access"]
+AccessWorkspaces --> QueryWorkspaces["SELECT workspaces JOIN workspace_members"]
+QueryWorkspaces --> ViewDebates["View Workspace Debates"]
+ViewDebates --> ValidateMembership{"Foreign Key Validation"}
+ValidateMembership --> |Valid| PerformAction["Perform Action"]
+ValidateMembership --> |Invalid| DenyAccess["Deny Access"]
 ```
 
 **Diagram sources**
-- [auth.js:61-78](file://dissensus-engine/server/auth.js#L61-L78)
-- [index.js:249-277](file://dissensus-engine/server/index.js#L249-L277)
+- [auth.js:42-46](file://dissensus-engine/server/auth.js#L42-L46)
+- [index.js:318-329](file://dissensus-engine/server/index.js#L318-L329)
+- [workspace.js:19-29](file://dissensus-engine/server/workspace.js#L19-L29)
 
 **Section sources**
-- [auth.js:95-117](file://dissensus-engine/server/auth.js#L95-L117)
-- [index.js:249-277](file://dissensus-engine/server/index.js#L249-L277)
+- [auth.js:95-126](file://dissensus-engine/server/auth.js#L95-L126)
+- [index.js:302-329](file://dissensus-engine/server/index.js#L302-L329)
 
 ## API Endpoints
 
 ### Workspace Management Endpoints
 
-The workspace system exposes several REST API endpoints for managing workspaces:
+The workspace system exposes several REST API endpoints for managing workspaces with database-backed operations:
 
-| Endpoint | Method | Description | Authentication Required |
-|----------|--------|-------------|------------------------|
-| `/api/workspaces` | GET | List user's workspaces | Yes |
-| `/api/workspaces` | POST | Create new workspace | Yes |
-| `/api/workspaces/:id/debates` | GET | List debates in workspace | Yes |
-| `/api/workspaces/:id/members` | POST | Add member to workspace | Yes (Owner) |
+| Endpoint | Method | Description | Authentication Required | Database Operations |
+|----------|--------|-------------|------------------------|---------------------|
+| `/api/workspaces` | GET | List user's workspaces | Yes | SELECT with JOIN queries |
+| `/api/workspaces` | POST | Create new workspace | Yes | INSERT operations |
+| `/api/workspaces/:id/debates` | GET | List debates in workspace | Yes | SELECT with workspace filtering |
+| `/api/workspaces/:id/members` | POST | Add member to workspace | Yes (Owner) | INSERT with foreign key validation |
 
-### Authentication Integration
+### Database Integration
 
-The workspace endpoints integrate with the authentication middleware:
+The workspace endpoints integrate with the database layer for secure and efficient operations:
 
 ```mermaid
 sequenceDiagram
@@ -259,30 +279,32 @@ participant Client as "Client"
 participant API as "API Server"
 participant Auth as "Auth Middleware"
 participant WS as "Workspace Service"
+participant DB as "SQLite Database"
 Client->>API : POST /api/workspaces
 API->>Auth : Verify JWT Token
 Auth->>Auth : Validate Token
 Auth-->>API : User Context
 API->>WS : createWorkspace(name, userId)
-WS->>WS : Validate Input
-WS->>WS : Create Workspace
-WS->>WS : Save to File
+WS->>DB : INSERT INTO workspaces
+DB-->>WS : Workspace Created
+WS->>DB : INSERT INTO workspace_members
+DB-->>WS : Membership Added
 WS-->>API : Workspace Object
 API-->>Client : 201 Created
 ```
 
 **Diagram sources**
-- [index.js:255-264](file://dissensus-engine/server/index.js#L255-L264)
-- [auth.js:95-106](file://dissensus-engine/server/auth.js#L95-L106)
+- [index.js:307-316](file://dissensus-engine/server/index.js#L307-L316)
+- [auth.js:93-102](file://dissensus-engine/server/auth.js#L93-L102)
 
 **Section sources**
-- [index.js:249-277](file://dissensus-engine/server/index.js#L249-L277)
+- [index.js:302-329](file://dissensus-engine/server/index.js#L302-L329)
 
 ## Frontend Integration
 
 ### User Interface Components
 
-The frontend provides intuitive interfaces for workspace management:
+The frontend provides intuitive interfaces for workspace management with real-time updates:
 
 ```mermaid
 graph LR
@@ -311,11 +333,11 @@ ProfileUI --> WSList
 
 ### Debate Association
 
-Workspaces are integrated with the debate system through automatic association:
+Workspaces are integrated with the debate system through automatic association with database-backed metadata:
 
-- **Personal Workspaces**: Automatically created during user registration
-- **Shared Workspaces**: Manually created and managed by owners
-- **Debate Tracking**: All debates are associated with user's current workspace
+- **Personal Workspaces**: Automatically created during user registration with foreign key relationships
+- **Shared Workspaces**: Manually created and managed by owners with membership validation
+- **Debate Tracking**: All debates are associated with user's current workspace through database relationships
 
 **Section sources**
 - [index.html:231-232](file://dissensus-engine/public/index.html#L231-L232)
@@ -325,12 +347,12 @@ Workspaces are integrated with the debate system through automatic association:
 
 ### Docker Configuration
 
-The workspace management system is containerized for easy deployment:
+The workspace management system is containerized for easy deployment with database persistence:
 
 ```mermaid
 flowchart TD
-Build[Docker Build] --> Image[Node.js 20 Base Image]
-Image --> Dependencies[Install Dependencies]
+Build[Docker Build] --> Image[Multi-stage Build]
+Image --> Dependencies[Install better-sqlite3]
 Dependencies --> Application[Copy Application Code]
 Application --> Volume[Mount Data Volume]
 Volume --> Container[Run Container]
@@ -339,12 +361,12 @@ Port --> Network[Network Configuration]
 ```
 
 **Diagram sources**
-- [Dockerfile:1-19](file://dissensus-engine/Dockerfile#L1-L19)
+- [Dockerfile:1-26](file://dissensus-engine/Dockerfile#L1-L26)
 - [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
 
 ### Environment Configuration
 
-The system supports flexible environment configuration:
+The system supports flexible environment configuration with database-specific settings:
 
 | Environment Variable | Description | Default Value |
 |---------------------|-------------|---------------|
@@ -354,75 +376,82 @@ The system supports flexible environment configuration:
 | `TRUST_PROXY_HOPS` | Proxy hop count | `1` |
 
 **Section sources**
-- [Dockerfile:1-19](file://dissensus-engine/Dockerfile#L1-L19)
+- [Dockerfile:1-26](file://dissensus-engine/Dockerfile#L1-L26)
 - [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
-- [auth.js:9-10](file://dissensus-engine/server/auth.js#L9-L10)
+- [auth.js:9-16](file://dissensus-engine/server/auth.js#L9-L16)
 
 ## Security Considerations
 
-### Data Protection
+### Database Security
 
-The workspace management system implements several security measures:
+The workspace management system implements comprehensive security measures at the database level:
 
-1. **Authentication**: JWT-based authentication with secure token handling
-2. **Authorization**: Role-based access control for workspace membership
-3. **Input Validation**: Sanitization of workspace names and user inputs
-4. **File Permissions**: Secure file system access patterns
-5. **Rate Limiting**: Protection against abuse of API endpoints
+1. **Foreign Key Constraints**: Automatic referential integrity prevents orphaned records
+2. **SQL Injection Prevention**: Parameterized queries with prepared statements
+3. **Data Encryption**: Password hashing with bcrypt, JWT token protection
+4. **Access Control**: Role-based permissions enforced through database relationships
+5. **Audit Logging**: Transaction logs for compliance and debugging
 
 ### Data Integrity
 
-- **Atomic Operations**: Workspace operations are designed to maintain data consistency
-- **Error Handling**: Comprehensive error handling prevents data corruption
-- **Backup Strategy**: File-based storage allows for easy backup and recovery
+- **Atomic Transactions**: Database operations ensure complete success or failure
+- **Constraint Enforcement**: Foreign key constraints maintain referential integrity
+- **Index Optimization**: Proper indexing for query performance and security
+- **Backup Strategy**: SQLite database files can be easily backed up and restored
 
 ### Privacy Considerations
 
 - **Data Minimization**: Only necessary user and workspace data is stored
 - **Access Control**: Strict permissions prevent unauthorized access to workspaces
 - **Audit Logging**: Activity tracking helps monitor workspace usage
+- **CSRF Protection**: Cross-site request forgery protection for sensitive operations
 
 ## Troubleshooting Guide
 
-### Common Issues and Solutions
+### Database-Related Issues and Solutions
 
-**Issue**: Workspace data not persisting
-- **Cause**: File system permission issues
-- **Solution**: Ensure the `data/` directory is writable by the Node.js process
+**Issue**: Database connection failures
+- **Cause**: SQLite database file corruption or permission issues
+- **Solution**: Restart the application to recreate database connections, ensure proper file permissions
+
+**Issue**: Foreign key constraint violations
+- **Cause**: Attempting to create workspace members without valid user/workspace IDs
+- **Solution**: Verify user and workspace existence before creating memberships
+
+**Issue**: Performance degradation with large datasets
+- **Cause**: Missing indexes or inefficient queries
+- **Solution**: Database automatically creates indexes, but consider optimizing queries if experiencing slow responses
 
 **Issue**: Authentication failures after workspace creation
 - **Cause**: JWT secret mismatch or token expiration
 - **Solution**: Regenerate JWT secret and ensure proper token handling
 
-**Issue**: Unable to join workspace
-- **Cause**: Invalid workspace ID or insufficient permissions
-- **Solution**: Verify workspace ID format and check owner permissions
-
 **Issue**: API endpoint errors
 - **Cause**: Missing authentication or invalid request format
 - **Solution**: Ensure proper JWT token in Authorization header and valid JSON format
 
-### Debugging Tools
+### Database Maintenance
 
-The system provides several debugging capabilities:
+The system includes built-in database maintenance features:
 
-- **Console Logging**: Comprehensive logging of workspace operations
-- **Error Tracking**: Centralized error handling with detailed messages
-- **Health Checks**: `/api/health` endpoint for system status monitoring
+- **WAL Mode**: Automatic write-ahead logging for improved concurrency
+- **Foreign Key Enforcement**: Automatic constraint checking
+- **Index Optimization**: Automatic index creation for performance
+- **Transaction Support**: Atomic operations for data consistency
 
 **Section sources**
-- [workspace.js:12-21](file://dissensus-engine/server/workspace.js#L12-L21)
-- [index.js:96-102](file://dissensus-engine/server/index.js#L96-L102)
+- [workspace.js:31-36](file://dissensus-engine/server/workspace.js#L31-L36)
+- [db.js:10-12](file://dissensus-engine/server/db.js#L10-L12)
 
 ## Conclusion
 
-The Workspace Management system in Dissensus AI provides a robust foundation for organizing and collaborating on debate activities. Its modular architecture, secure design, and seamless integration with the authentication and debate systems make it an essential component of the platform.
+The Workspace Management system in Dissensus AI provides a robust foundation for organizing and collaborating on debate activities. The migration to database-backed operations with foreign key constraints has significantly improved the system's reliability, performance, and scalability compared to the previous file-based approach.
 
-Key strengths of the system include:
-- **Scalable Design**: Modular architecture supports future expansion
-- **Security Focus**: Comprehensive authentication and authorization mechanisms
-- **User Experience**: Intuitive interfaces for workspace management
-- **Persistence Strategy**: Reliable file-based storage with atomic operations
-- **Deployment Flexibility**: Containerized deployment with Docker support
+Key strengths of the database-backed system include:
+- **Enhanced Reliability**: Foreign key constraints and atomic transactions ensure data integrity
+- **Improved Performance**: SQLite with WAL mode and optimized indexes for concurrent access
+- **Scalability**: Database operations handle larger datasets more efficiently than file-based storage
+- **Security**: Built-in constraint enforcement and SQL injection prevention
+- **Maintainability**: Centralized database schema with clear relationships and indexes
 
-The system successfully balances functionality with simplicity, providing users with powerful workspace management capabilities while maintaining the technical excellence expected from the Dissensus platform.
+The system successfully balances functionality with technical excellence, providing users with powerful workspace management capabilities while leveraging modern database technologies for optimal performance and reliability. The modular architecture, combined with comprehensive security measures and automated maintenance, makes it an essential component of the Dissensus platform.

@@ -15,16 +15,17 @@
 - [.dockerignore](file://dissensus-engine/.dockerignore)
 - [index.js](file://dissensus-engine/server/index.js)
 - [package.json](file://dissensus-engine/package.json)
+- [db.js](file://dissensus-engine/server/db.js)
+- [.gitignore](file://.gitignore)
 - [README.md](file://dissensus-engine/README.md)
 </cite>
 
 ## Update Summary
 **Changes Made**
-- Added comprehensive Docker containerization support documentation
-- Updated deployment options to include Docker as a production-ready alternative
-- Added Dockerfile, docker-compose.yml, and .dockerignore configuration details
-- Enhanced deployment flexibility with containerized deployment options
-- Updated architecture diagrams to reflect containerized deployment scenarios
+- Enhanced Docker deployment support with multi-stage build process for better-sqlite3 native dependencies
+- Updated .gitignore to exclude SQLite database file (dissensus.db) and related data files
+- Improved containerized deployment reliability for database-dependent applications
+- Added comprehensive SQLite database management to deployment documentation
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -33,14 +34,15 @@
 4. [Architecture Overview](#architecture-overview)
 5. [Detailed Component Analysis](#detailed-component-analysis)
 6. [Docker Containerization](#docker-containerization)
-7. [Dependency Analysis](#dependency-analysis)
-8. [Performance Considerations](#performance-considerations)
-9. [Troubleshooting Guide](#troubleshooting-guide)
-10. [Conclusion](#conclusion)
-11. [Appendices](#appendices)
+7. [Database Management](#database-management)
+8. [Dependency Analysis](#dependency-analysis)
+9. [Performance Considerations](#performance-considerations)
+10. [Troubleshooting Guide](#troubleshooting-guide)
+11. [Conclusion](#conclusion)
+12. [Appendices](#appendices)
 
 ## Introduction
-This document provides comprehensive deployment and operations guidance for the Dissensus AI Debate Engine across development and production environments. It covers VPS deployment using the included PowerShell automation, nginx reverse proxy configuration, systemd service management, SSL certificate setup with Let's Encrypt, environment variable configuration, reverse proxy and security hardening, automated deployment pipelines, monitoring and log management, performance tuning, scaling, backups, disaster recovery, and troubleshooting. It also explains the relationship between development, staging, and production deployment targets, and now includes comprehensive Docker containerization support for production-ready deployment options.
+This document provides comprehensive deployment and operations guidance for the Dissensus AI Debate Engine across development and production environments. It covers VPS deployment using the included PowerShell automation, nginx reverse proxy configuration, systemd service management, SSL certificate setup with Let's Encrypt, environment variable configuration, reverse proxy and security hardening, automated deployment pipelines, monitoring and log management, performance tuning, scaling, backups, disaster recovery, and troubleshooting. It also explains the relationship between development, staging, and production deployment targets, and now includes comprehensive Docker containerization support for production-ready deployment options with enhanced SQLite database management.
 
 ## Project Structure
 The deployment-related materials are primarily located under the dissensus-engine module and its docs/configs directory. The key elements include:
@@ -50,8 +52,9 @@ The deployment-related materials are primarily located under the dissensus-engin
 - Nginx configuration templates for reverse proxy and SSL
 - A systemd unit file for service lifecycle management
 - Git-based deployment instructions for continuous updates
-- Docker containerization support with Dockerfile, docker-compose.yml, and .dockerignore
+- Docker containerization support with multi-stage Dockerfile, docker-compose.yml, and .dockerignore
 - The Node.js server implementation that exposes SSE streaming and API endpoints
+- SQLite database management with better-sqlite3 for persistent data storage
 
 ```mermaid
 graph TB
@@ -59,15 +62,17 @@ subgraph "Local Developer Workstation"
 PS["PowerShell Script<br/>deploy-env-to-vps.ps1"]
 Repo["Git Repository<br/>tri-ai"]
 DockerCompose["Docker Compose<br/>docker-compose.yml"]
+DB["SQLite Database<br/>dissensus.db"]
 end
 subgraph "Production VPS"
 Sysd["systemd Unit<br/>dissensus.service"]
 Node["Node.js Server<br/>index.js"]
 Nginx["Nginx Reverse Proxy<br/>nginx-dissensus.conf / dissensus-nginx-ssl.conf"]
 SSL["Let's Encrypt Certificate"]
+DBVol["Volume Mounts<br/>data:/app/data"]
 end
 subgraph "Containerized Deployment"
-Dockerfile["Dockerfile<br/>Container Definition"]
+Dockerfile["Multi-Stage Dockerfile<br/>Builder + Runtime"]
 DockerImage["Docker Image<br/>Production Ready"]
 DockerVolume["Volume Mounts<br/>data:/app/data"]
 end
@@ -79,6 +84,8 @@ SSL --> Nginx
 DockerCompose --> Dockerfile
 Dockerfile --> DockerImage
 DockerVolume --> DockerImage
+DBVol --> DockerImage
+DB --> DBVol
 ```
 
 **Diagram sources**
@@ -87,15 +94,17 @@ DockerVolume --> DockerImage
 - [index.js:1-481](file://dissensus-engine/server/index.js#L1-L481)
 - [nginx-dissensus.conf:1-81](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L1-L81)
 - [dissensus-nginx-ssl.conf:1-68](file://dissensus-engine/docs/configs/dissensus-nginx-ssl.conf#L1-L68)
-- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [Dockerfile:1-26](file://dissensus-engine/Dockerfile#L1-L26)
 - [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
 - [.dockerignore:1-8](file://dissensus-engine/.dockerignore#L1-L8)
+- [db.js:1-47](file://dissensus-engine/server/db.js#L1-L47)
 
 **Section sources**
 - [README.md:110-134](file://dissensus-engine/README.md#L110-L134)
 - [DEPLOY-VPS.md:1-25](file://dissensus-engine/docs/DEPLOY-VPS.md#L1-L25)
-- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [Dockerfile:1-26](file://dissensus-engine/Dockerfile#L1-L26)
 - [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
+- [db.js:1-47](file://dissensus-engine/server/db.js#L1-L47)
 
 ## Core Components
 - Node.js server (Express) with SSE streaming for real-time debates
@@ -104,7 +113,8 @@ DockerVolume --> DockerImage
 - SSL termination via Certbot/Let's Encrypt
 - Environment-driven configuration for providers, staking enforcement, and reverse proxy trust
 - Automated deployment via PowerShell and Git pull
-- **New**: Docker containerization with production-ready image building and volume management
+- **Enhanced**: Docker containerization with multi-stage build process supporting native dependencies for better-sqlite3
+- **New**: SQLite database management with persistent volume mounting and WAL mode optimization
 
 **Section sources**
 - [index.js:26-56](file://dissensus-engine/server/index.js#L26-L56)
@@ -114,11 +124,12 @@ DockerVolume --> DockerImage
 - [dissensus.service:1-27](file://dissensus-engine/docs/configs/dissensus.service#L1-L27)
 - [dissensus-nginx-ssl.conf:21-57](file://dissensus-engine/docs/configs/dissensus-nginx-ssl.conf#L21-L57)
 - [README.md:136-151](file://dissensus-engine/README.md#L136-L151)
-- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [Dockerfile:1-26](file://dissensus-engine/Dockerfile#L1-L26)
 - [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
+- [db.js:1-47](file://dissensus-engine/server/db.js#L1-L47)
 
 ## Architecture Overview
-The production architecture uses Nginx as a reverse proxy terminating TLS, applying security headers, compressing responses, and serving static assets. Nginx forwards API and SSE traffic to the Node.js server on localhost. The systemd service manages the Node.js process, ensuring it starts on boot and restarts on failure. SSL certificates are provisioned and renewed automatically via Certbot. **New**: Docker containerization provides an alternative deployment model with standardized container images, volume management, and simplified orchestration.
+The production architecture uses Nginx as a reverse proxy terminating TLS, applying security headers, compressing responses, and serving static assets. Nginx forwards API and SSE traffic to the Node.js server on localhost. The systemd service manages the Node.js process, ensuring it starts on boot and restarts on failure. SSL certificates are provisioned and renewed automatically via Certbot. **Enhanced**: Docker containerization provides an alternative deployment model with standardized container images, volume management, and simplified orchestration. The multi-stage build process ensures native dependencies like better-sqlite3 compile correctly in the container environment. **New**: SQLite database management is handled through persistent volume mounts with WAL mode optimization for concurrent read performance.
 
 ```mermaid
 graph TB
@@ -127,13 +138,15 @@ CF["Cloudflare / CDN (Optional)"]
 Nginx["Nginx (Reverse Proxy)<br/>TLS, Headers, Compression, Static Assets"]
 Node["Node.js Server (Express)<br/>SSE Streaming, APIs"]
 Providers["AI Providers<br/>DeepSeek / Gemini / OpenAI"]
-Docker["Docker Container<br/>Production Ready"]
+Docker["Docker Container<br/>Multi-Stage Build"]
 DockerVolume["Volume Mounts<br/>Persistent Data"]
+SQLite["SQLite Database<br/>dissensus.db"]
 Internet --> CF --> Nginx
 Nginx --> Node
 Node --> Providers
 Docker --> Node
 DockerVolume --> Docker
+DockerVolume --> SQLite
 ```
 
 **Diagram sources**
@@ -141,8 +154,9 @@ DockerVolume --> Docker
 - [nginx-dissensus.conf:1-81](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L1-L81)
 - [dissensus-nginx-ssl.conf:1-68](file://dissensus-engine/docs/configs/dissensus-nginx-ssl.conf#L1-L68)
 - [index.js:220-311](file://dissensus-engine/server/index.js#L220-L311)
-- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [Dockerfile:1-26](file://dissensus-engine/Dockerfile#L1-L26)
 - [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
+- [db.js:1-47](file://dissensus-engine/server/db.js#L1-L47)
 
 ## Detailed Component Analysis
 
@@ -368,7 +382,7 @@ Providers --> ConfigAPI["Expose provider config to client"]
 - Hardening measures:
   - Security headers in Nginx configuration.
   - Gzip compression for bandwidth savings.
-  - Static asset caching to reduce origin load.
+  - static asset caching to reduce origin load.
   - SSE streaming block disables buffering and increases timeouts.
   - Firewall allows only SSH, HTTP, and HTTPS.
 
@@ -455,40 +469,40 @@ Verify --> SSE["Watch SSE stream"]
   - Similar to production but with reduced scale and possibly self-signed or staging certificates.
 - Production:
   - Nginx reverse proxy, systemd service, Let's Encrypt SSL, firewall hardening, and automated deployments.
-- **New**: Containerized deployment:
-  - Docker containerization provides standardized production deployment with volume management and orchestration.
-
-[No sources needed since this section provides conceptual guidance]
+- **Enhanced**: Containerized deployment:
+  - Docker containerization provides standardized production deployment with volume management, multi-stage build process, and orchestration.
+  - Native dependencies like better-sqlite3 are properly compiled during the build stage.
 
 ## Docker Containerization
 
-### Dockerfile Configuration
-The Dockerfile provides a production-ready container definition for the Dissensus AI Debate Engine:
+### Enhanced Dockerfile Configuration
+The Dockerfile now implements a multi-stage build process to properly handle native dependencies for better-sqlite3:
 
-- **Base Image**: Node.js 20 slim image for minimal footprint
-- **Working Directory**: /app with proper layer caching strategy
-- **Dependency Installation**: Optimized two-stage build process
+- **Stage 1 (Builder)**: Full Node.js 20 image with build tools for compiling native addons
+- **Stage 2 (Runtime)**: Slim Node.js 20 image without build dependencies for production
+- **Build Process**: Compiles better-sqlite3 and other native dependencies in builder stage
+- **Runtime Optimization**: Copies only compiled node_modules to final image
 - **Application Setup**: Complete source copy with debate data directory creation
 - **Port Exposure**: Standard 3000 port for the Node.js server
 - **Entry Point**: Direct execution of the Node.js server
 
 ```mermaid
 flowchart TD
-Dockerfile["Dockerfile"] --> Base["FROM node:20-slim"]
-Base --> Workdir["WORKDIR /app"]
-Workdir --> CopyPkg["COPY package*.json"]
-CopyPkg --> InstallDeps["RUN npm install --production"]
-InstallDeps --> CopySrc["COPY . ."]
-CopySrc --> CreateData["RUN mkdir -p /app/data/debates"]
+Builder["Builder Stage<br/>node:20 (Full Tools)"] --> InstallDeps["npm install --production"]
+InstallDeps --> CompileNative["Compile native addons<br/>better-sqlite3, bindings"]
+CompileNative --> Runtime["Runtime Stage<br/>node:20-slim (Minimal)"]
+Runtime --> CopyCompiled["COPY compiled node_modules"]
+CopyCompiled --> CopySrc["COPY application source"]
+CopySrc --> CreateData["mkdir -p /app/data/debates"]
 CreateData --> ExposePort["EXPOSE 3000"]
-ExposePort --> Cmd["CMD [\"node\", \"server/index.js\"]"]
+ExposePort --> Cmd["CMD node server/index.js"]
 ```
 
 **Diagram sources**
-- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [Dockerfile:1-26](file://dissensus-engine/Dockerfile#L1-L26)
 
 **Section sources**
-- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [Dockerfile:1-26](file://dissensus-engine/Dockerfile#L1-L26)
 
 ### Docker Compose Orchestration
 The docker-compose.yml defines a production-ready service configuration:
@@ -515,7 +529,7 @@ Service --> Restart["unless-stopped policy"]
 **Section sources**
 - [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
 
-### Docker Ignore Configuration
+### Enhanced Docker Ignore Configuration
 The .dockerignore file optimizes build performance and security:
 
 - **Node Modules**: Excludes installed dependencies from build context
@@ -524,6 +538,7 @@ The .dockerignore file optimizes build performance and security:
 - **Documentation**: Excludes README files and documentation directories
 - **Archives**: Prevents .zip files from being included
 - **Data Directory**: Excludes local data directory for container persistence
+- **SQLite Database**: Excludes SQLite database file (dissensus.db) from build context
 
 **Section sources**
 - [.dockerignore:1-8](file://dissensus-engine/.dockerignore#L1-L8)
@@ -534,6 +549,7 @@ The .dockerignore file optimizes build performance and security:
 - **Scalability**: Easy horizontal scaling with container orchestration platforms
 - **Persistence**: Volume mounts ensure data survives container recreation
 - **Security**: Reduced attack surface with minimal base image
+- **Reliability**: Multi-stage build ensures native dependencies compile correctly
 - **Portability**: Self-contained deployment units
 
 ### Container Deployment Options
@@ -544,9 +560,65 @@ The .dockerignore file optimizes build performance and security:
 - **Scaling**: Horizontal scaling through container replicas and load balancing
 
 **Section sources**
-- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [Dockerfile:1-26](file://dissensus-engine/Dockerfile#L1-L26)
 - [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
 - [.dockerignore:1-8](file://dissensus-engine/.dockerignore#L1-L8)
+
+## Database Management
+
+### SQLite Database Architecture
+The application uses SQLite with better-sqlite3 for persistent data storage:
+
+- **Database Location**: data/dissensus.db in the application directory
+- **WAL Mode**: Enabled for improved concurrent read performance
+- **Foreign Keys**: Enabled for data integrity
+- **Table Structure**: Users, Workspaces, and Workspace Members tables
+- **Indexes**: Optimized indexes for email and membership queries
+
+```mermaid
+flowchart TD
+DB["SQLite Database<br/>dissensus.db"] --> WAL["WAL Mode<br/>Concurrent Reads"]
+DB --> FK["Foreign Keys<br/>Data Integrity"]
+DB --> Users["Users Table<br/>id, email, password, name"]
+DB --> Workspaces["Workspaces Table<br/>id, name, owner_id"]
+DB --> Members["Workspace Members<br/>composite primary key"]
+Users --> Index1["Index: email"]
+Members --> Index2["Index: user_id"]
+```
+
+**Diagram sources**
+- [db.js:1-47](file://dissensus-engine/server/db.js#L1-L47)
+
+**Section sources**
+- [db.js:1-47](file://dissensus-engine/server/db.js#L1-L47)
+
+### Database Initialization and Migration
+- **Automatic Creation**: Database file and tables are created on first run
+- **Directory Management**: Data directory is created if it doesn't exist
+- **Schema Management**: SQL statements handle table creation and indexing
+- **Volume Persistence**: Database persists across container restarts
+
+### Git Ignore Configuration for Database Files
+The .gitignore file excludes SQLite database files and related data:
+
+- **Database File**: data/dissensus.db (SQLite database file)
+- **Debate Data**: data/debates/ (debate content directory)
+- **User Data**: data/users.json (user information)
+- **Workspace Data**: data/workspaces.json (workspace information)
+
+**Section sources**
+- [.gitignore:58-62](file://.gitignore#L58-L62)
+- [db.js:1-47](file://dissensus-engine/server/db.js#L1-L47)
+
+### Container Database Management
+- **Volume Mounts**: Persistent storage through ./data to /app/data mapping
+- **File Permissions**: Database files are writable by the application
+- **Backup Strategy**: Volume snapshots for database backup
+- **Migration Support**: Schema changes applied on container startup
+
+**Section sources**
+- [docker-compose.yml:9-11](file://dissensus-engine/docker-compose.yml#L9-L11)
+- [db.js:5-6](file://dissensus-engine/server/db.js#L5-L6)
 
 ## Dependency Analysis
 - Node.js server depends on:
@@ -555,41 +627,51 @@ The .dockerignore file optimizes build performance and security:
   - helmet for security headers.
   - express-rate-limit for abuse prevention.
   - SSE streaming for real-time debate output.
+  - **Enhanced**: better-sqlite3 for SQLite database operations.
 - Nginx depends on:
   - Correct proxy headers and timeouts for SSE.
   - SSL configuration for HTTPS.
 - Systemd depends on:
   - Correct ExecStart path and EnvironmentFile.
   - Proper permissions and working directory.
-- **New**: Docker containerization adds:
-  - Container runtime dependencies and orchestration requirements.
+- **Enhanced**: Docker containerization adds:
+  - Multi-stage build dependencies for native addon compilation.
   - Volume mount dependencies for persistent data storage.
   - Network configuration for container communication.
+- **New**: SQLite database dependencies:
+  - better-sqlite3 native dependencies require build tools.
+  - WAL mode and foreign key pragmas for database optimization.
 
 ```mermaid
 graph LR
 Env[".env"] --> Node["index.js"]
 Node --> SSE["SSE Streaming"]
 Node --> APIs["API Endpoints"]
+Node --> DB["SQLite Database<br/>better-sqlite3"]
 Nginx["Nginx"] --> Node
 SSL["Let's Encrypt"] --> Nginx
 Sysd["systemd"] --> Node
 Docker["Docker Runtime"] --> Node
 Volumes["Volume Mounts"] --> Docker
+Builder["Multi-Stage Builder"] --> Docker
+NativeDeps["Native Dependencies<br/>better-sqlite3"] --> Builder
 ```
 
 **Diagram sources**
 - [index.js:6-28](file://dissensus-engine/server/index.js#L6-L28)
 - [nginx-dissensus.conf:42-81](file://dissensus-engine/docs/configs/nginx-dissensus.conf#L42-L81)
 - [dissensus.service:10-18](file://dissensus-engine/docs/configs/dissensus.service#L10-L18)
-- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [Dockerfile:1-26](file://dissensus-engine/Dockerfile#L1-L26)
 - [docker-compose.yml:9-11](file://dissensus-engine/docker-compose.yml#L9-L11)
+- [db.js:1-47](file://dissensus-engine/server/db.js#L1-L47)
+- [package.json:13](file://dissensus-engine/package.json#L13)
 
 **Section sources**
 - [package.json:10-27](file://dissensus-engine/package.json#L10-L27)
 - [index.js:6-28](file://dissensus-engine/server/index.js#L6-L28)
-- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [Dockerfile:1-26](file://dissensus-engine/Dockerfile#L1-L26)
 - [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
+- [db.js:1-47](file://dissensus-engine/server/db.js#L1-L47)
 
 ## Performance Considerations
 - SSE streaming:
@@ -601,12 +683,15 @@ Volumes["Volume Mounts"] --> Docker
   - Monitor memory and CPU; add swap if needed on constrained VPS instances.
 - Provider selection:
   - Choose providers/models based on cost/performance trade-offs.
-- **New**: Container performance:
+- **Enhanced**: Container performance:
   - Optimize container resource limits and memory allocation.
   - Use appropriate container registry and image caching strategies.
   - Implement health checks and graceful shutdown handling.
-
-[No sources needed since this section provides general guidance]
+  - **New**: Multi-stage build reduces final image size and improves startup performance.
+- **New**: Database performance:
+  - WAL mode improves concurrent read performance.
+  - Foreign key constraints ensure data integrity.
+  - Proper indexing on frequently queried columns.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -622,21 +707,25 @@ Common issues and resolutions:
   - Add swap space and monitor memory usage.
 - Port changes:
   - Update systemd and Nginx proxy_pass to match the new port.
-- **New**: Docker container issues:
+- **Enhanced**: Docker container issues:
   - Check container logs with docker logs <container-id>.
   - Verify volume mounts are accessible and have proper permissions.
   - Ensure environment variables are properly passed to the container.
   - Confirm network connectivity between containers if using compose services.
+  - **New**: Multi-stage build failures indicate missing build dependencies in builder stage.
+- **New**: Database issues:
+  - Verify SQLite database file permissions in mounted volume.
+  - Check WAL mode compatibility with container filesystem.
+  - Ensure database directory exists and is writable.
 
 **Section sources**
 - [DEPLOY-VPS.md:601-690](file://dissensus-engine/docs/DEPLOY-VPS.md#L601-L690)
-- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [Dockerfile:1-26](file://dissensus-engine/Dockerfile#L1-L26)
 - [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
+- [db.js:1-47](file://dissensus-engine/server/db.js#L1-L47)
 
 ## Conclusion
-The Dissensus AI Debate Engine is designed for straightforward deployment on a VPS with Nginx, systemd, and SSL automation. The included PowerShell and shell scripts streamline environment configuration and initial provisioning. **Updated**: With the addition of comprehensive Docker containerization support, teams now have multiple deployment options including traditional VPS deployment, containerized deployment, and hybrid approaches. The Dockerfile, docker-compose.yml, and .dockerignore files provide production-ready containerization with optimized build processes, volume management, and orchestration capabilities. By following the documented steps for reverse proxy, security hardening, monitoring, troubleshooting, and containerized deployment, teams can operate reliable development, staging, and production environments with predictable upgrades and minimal downtime.
-
-[No sources needed since this section summarizes without analyzing specific files]
+The Dissensus AI Debate Engine is designed for straightforward deployment on a VPS with Nginx, systemd, and SSL automation. The included PowerShell and shell scripts streamline environment configuration and initial provisioning. **Enhanced**: With the addition of comprehensive Docker containerization support featuring multi-stage builds for native dependency compilation, teams now have multiple deployment options including traditional VPS deployment, containerized deployment, and hybrid approaches. The enhanced Dockerfile, docker-compose.yml, and .dockerignore files provide production-ready containerization with optimized build processes, volume management, and orchestration capabilities. **New**: SQLite database management is fully integrated with persistent volume mounting and WAL mode optimization. By following the documented steps for reverse proxy, security hardening, monitoring, troubleshooting, containerized deployment, and database management, teams can operate reliable development, staging, and production environments with predictable upgrades and minimal downtime.
 
 ## Appendices
 
@@ -648,37 +737,53 @@ The Dissensus AI Debate Engine is designed for straightforward deployment on a V
 - Renew SSL: certbot renew
 - Check firewall: ufw status
 - Disk/memory/CPU: df -h, free -h, htop
-- **New**: Docker commands:
+- **Enhanced**: Docker commands:
   - Build container: docker build -t dissensus-engine .
   - Run container: docker run -p 3000:3000 --env-file .env dissensus-engine
   - Compose up: docker-compose up -d
   - View logs: docker-compose logs -f dissensus-engine
   - Stop containers: docker-compose down
+  - **New**: Multi-stage build: docker build --target builder -t dissensus-builder .
 
 **Section sources**
 - [DEPLOY-VPS.md:693-708](file://dissensus-engine/docs/DEPLOY-VPS.md#L693-L708)
-- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [Dockerfile:1-26](file://dissensus-engine/Dockerfile#L1-L26)
 - [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
 
 ### Appendix B: Environment Variables Reference
 - PORT, SOLANA_RPC_URL, DISS_TOKEN_MINT, SOLANA_CLUSTER, DISS_STAKING_PROGRAM_ID, TRUST_PROXY, TRUST_PROXY_HOPS
-- **New**: Docker-specific considerations:
+- **Enhanced**: Docker-specific considerations:
   - Environment variables can be passed via .env file or docker-compose.yml
   - Volume mounts for persistent data storage
   - Container networking and port mapping configuration
+  - **New**: Database configuration through volume-mounted data directory
 
 **Section sources**
 - [README.md:136-151](file://dissensus-engine/README.md#L136-L151)
 - [docker-compose.yml:7-11](file://dissensus-engine/docker-compose.yml#L7-L11)
 
 ### Appendix C: Docker Configuration Reference
-- **Dockerfile**: Production-ready Node.js 20 slim image with optimized build process
+- **Dockerfile**: Multi-stage build process with native dependency compilation
 - **docker-compose.yml**: Service definition with port mapping, volume mounts, and restart policies
-- **.dockerignore**: Build optimization and security configuration
+- **.dockerignore**: Build optimization and security configuration excluding SQLite database files
 - **Volume Management**: Persistent data storage through mounted volumes
 - **Environment Integration**: External .env file support for configuration management
+- **Database Integration**: SQLite database management with WAL mode and foreign key constraints
 
 **Section sources**
-- [Dockerfile:1-22](file://dissensus-engine/Dockerfile#L1-L22)
+- [Dockerfile:1-26](file://dissensus-engine/Dockerfile#L1-L26)
 - [docker-compose.yml:1-12](file://dissensus-engine/docker-compose.yml#L1-L12)
 - [.dockerignore:1-8](file://dissensus-engine/.dockerignore#L1-L8)
+- [db.js:1-47](file://dissensus-engine/server/db.js#L1-L47)
+
+### Appendix D: Database Configuration Reference
+- **SQLite Database**: data/dissensus.db with WAL mode enabled
+- **Table Structure**: Users, Workspaces, Workspace Members with foreign key relationships
+- **Indexes**: Optimized for email and membership queries
+- **Volume Mounting**: Persistent storage through /app/data directory
+- **Git Ignore**: Excludes database files from version control
+
+**Section sources**
+- [db.js:1-47](file://dissensus-engine/server/db.js#L1-L47)
+- [.gitignore:58-62](file://.gitignore#L58-L62)
+- [docker-compose.yml:9-11](file://dissensus-engine/docker-compose.yml#L9-L11)

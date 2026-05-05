@@ -3,14 +3,22 @@
 <cite>
 **Referenced Files in This Document**
 - [auth.js](file://dissensus-engine/server/auth.js)
+- [db.js](file://dissensus-engine/server/db.js)
 - [index.js](file://dissensus-engine/server/index.js)
 - [auth.js](file://dissensus-engine/public/js/auth.js)
 - [index.html](file://dissensus-engine/public/index.html)
 - [workspace.js](file://dissensus-engine/server/workspace.js)
-- [debate-store.js](file://dissensus-engine/server/debate-store.js)
 - [package.json](file://dissensus-engine/package.json)
-- [README.md](file://dissensus-engine/README.md)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Updated security implementation section to reflect enhanced CSRF protection using crypto.timingSafeEqual()
+- Revised input validation section to include comprehensive registration validation (email format, password length, name requirements)
+- Updated cookie-based authentication section to reflect migration from localStorage to HTTP-only cookies
+- Added SQLite database migration details from file-based storage
+- Enhanced security features documentation to include timing-safe comparisons and dual-token validation
+- Updated frontend authentication integration to use cookie-based storage instead of localStorage
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -18,7 +26,7 @@
 3. [Core Authentication Components](#core-authentication-components)
 4. [Authentication Flow Analysis](#authentication-flow-analysis)
 5. [Data Storage and Persistence](#data-storage-and-persistence)
-6. [Security Implementation](#security-implementation)
+6. [Security Implementation](#security-implemented)
 7. [Frontend Authentication Integration](#frontend-authentication-integration)
 8. [Workspace and User Management](#workspace-and-user-management)
 9. [Performance and Scalability](#performance-and-scalability)
@@ -27,60 +35,64 @@
 
 ## Introduction
 
-The Dissensus AI Debate Engine implements a comprehensive authentication system that provides secure user registration, login, and session management for a multi-agent debate platform. The system combines modern security practices with user-friendly authentication flows, enabling users to create personalized workspaces and maintain persistent debate sessions.
+The Dissensus AI Debate Engine implements a comprehensive authentication system that provides secure user registration, login, and session management for a multi-agent debate platform. The system has been enhanced with modern security practices including cookie-based authentication with HTTP-only cookies, CSRF protection, and dual-token validation, while migrating from file-based storage to a SQLite database for improved reliability and scalability.
 
-The authentication system is built around JWT (JSON Web Token) technology with bcrypt password hashing, providing both security and seamless user experience. It integrates tightly with the debate engine's workspace functionality, allowing users to organize their debates into personal workspaces while maintaining strict security boundaries.
+The authentication system is built around JWT (JSON Web Token) technology with bcrypt password hashing, providing both security and seamless user experience. It integrates tightly with the debate engine's workspace functionality, allowing users to organize their debates into personal workspaces while maintaining strict security boundaries through enhanced cookie-based session management.
 
 ## System Architecture
 
-The authentication system follows a client-server architecture with clear separation of concerns:
+The authentication system follows a client-server architecture with clear separation of concerns and enhanced security through cookie-based session management:
 
 ```mermaid
 graph TB
 subgraph "Client-Side"
 UI[User Interface]
 AuthClient[Auth Client Library]
-LocalStorage[Local Storage]
+Cookies[HTTP-Only Cookies]
+CSRFCookie[CSRF Cookie]
 end
 subgraph "Server-Side"
 Express[Express Server]
 AuthModule[Auth Module]
 WorkspaceModule[Workspace Module]
-DataLayer[Data Layer]
+SQLite[SQLite Database]
+Crypto[crypto.timingSafeEqual]
 end
 subgraph "External Services"
 JWT[JWT Tokens]
 Bcrypt[Bcrypt Hashing]
-FS[File System]
-end
+CSRF[CSRF Protection]
+End
 UI --> AuthClient
 AuthClient --> Express
 Express --> AuthModule
 Express --> WorkspaceModule
 AuthModule --> JWT
 AuthModule --> Bcrypt
-AuthModule --> DataLayer
-WorkspaceModule --> DataLayer
-DataLayer --> FS
-LocalStorage -.-> AuthClient
+AuthModule --> SQLite
+WorkspaceModule --> SQLite
+SQLite --> CSRF
+Cookies -.-> AuthClient
+CSRFCookie -.-> Crypto
+Crypto --> CSRF
 ```
 
 **Diagram sources**
-- [auth.js:1-120](file://dissensus-engine/server/auth.js#L1-L120)
-- [index.js:16-18](file://dissensus-engine/server/index.js#L16-L18)
-- [auth.js:1-197](file://dissensus-engine/public/js/auth.js#L1-L197)
+- [auth.js:1-126](file://dissensus-engine/server/auth.js#L1-L126)
+- [index.js:18-18](file://dissensus-engine/server/index.js#L18-L18)
+- [auth.js:1-126](file://dissensus-engine/public/js/auth.js#L1-L126)
 
-The architecture ensures that all sensitive operations occur server-side while maintaining responsive client interactions through RESTful APIs and WebSocket connections.
+The architecture ensures that all sensitive operations occur server-side while maintaining responsive client interactions through RESTful APIs and WebSocket connections, with enhanced security through cookie-based session management and CSRF protection.
 
 **Section sources**
-- [auth.js:1-120](file://dissensus-engine/server/auth.js#L1-L120)
-- [index.js:1-554](file://dissensus-engine/server/index.js#L1-L554)
+- [auth.js:1-126](file://dissensus-engine/server/auth.js#L1-L126)
+- [index.js:1-668](file://dissensus-engine/server/index.js#L1-L668)
 
 ## Core Authentication Components
 
 ### Backend Authentication Module
 
-The server-side authentication module provides comprehensive user management functionality:
+The server-side authentication module provides comprehensive user management functionality with SQLite database integration:
 
 ```mermaid
 classDiagram
@@ -91,9 +103,8 @@ class AuthModule {
 +getUser(userId) Object|null
 +authMiddleware(req, res, next) Function
 +optionalAuth(req, res, next) Function
--ensureDir() void
--loadUsers() Array
--saveUsers(users) void
++csrfProtection(req, res, next) Function
+-extractToken(req) string|null
 }
 class UserModel {
 +string id
@@ -114,148 +125,160 @@ class PasswordService {
 +compare(password, hash) Promise
 -saltRounds number
 }
+class CookieManager {
++setAuthCookies(res, token, csrfToken) void
++clearAuthCookies(res) void
+}
 AuthModule --> UserModel : "manages"
 AuthModule --> JWTService : "uses"
 AuthModule --> PasswordService : "uses"
+AuthModule --> CookieManager : "uses"
 ```
 
 **Diagram sources**
-- [auth.js:27-119](file://dissensus-engine/server/auth.js#L27-L119)
+- [auth.js:18-126](file://dissensus-engine/server/auth.js#L18-L126)
 
 ### Frontend Authentication Client
 
-The client-side authentication library handles user interface interactions and local storage management:
+The client-side authentication library handles user interface interactions and cookie-based storage management:
 
 ```mermaid
 classDiagram
 class AuthClient {
-+getAuthToken() string|null
-+getAuthUser() Object|null
-+setAuth(token, user) void
-+clearAuth() void
++getCsrfToken() string|null
++csrfHeaders() Object
 +isLoggedIn() boolean
-+authHeaders() Object
++getCurrentUser() Object|null
 +handleRegister(event) Promise
 +handleLogin(event) Promise
 +logout() void
 +updateAuthUI() void
++initAuth() Promise
 }
-class LocalStorageManager {
-+getItem(key) string|null
-+setItem(key, value) void
-+removeItem(key) void
+class CookieManager {
++getCookie(name) string|null
++setCookie(name, value, options) void
++removeCookie(name, options) void
 }
 class APIClient {
 +fetch(url, options) Promise
 +POST(url, data) Promise
 +GET(url, options) Promise
 }
-AuthClient --> LocalStorageManager : "uses"
+AuthClient --> CookieManager : "uses"
 AuthClient --> APIClient : "uses"
 ```
 
 **Diagram sources**
-- [auth.js:1-197](file://dissensus-engine/public/js/auth.js#L1-L197)
+- [auth.js:1-212](file://dissensus-engine/public/js/auth.js#L1-L212)
 
 **Section sources**
-- [auth.js:1-120](file://dissensus-engine/server/auth.js#L1-L120)
-- [auth.js:1-197](file://dissensus-engine/public/js/auth.js#L1-L197)
+- [auth.js:1-126](file://dissensus-engine/server/auth.js#L1-L126)
+- [auth.js:1-212](file://dissensus-engine/public/js/auth.js#L1-L212)
 
 ## Authentication Flow Analysis
 
 ### User Registration Process
 
-The registration flow implements comprehensive validation and security measures:
+The registration flow implements comprehensive validation and security measures with cookie-based session creation:
 
 ```mermaid
 sequenceDiagram
 participant User as User
 participant Client as Auth Client
 participant Server as Auth Server
-participant Data as Data Store
+participant DB as SQLite Database
 User->>Client : Fill registration form
 Client->>Client : Validate input (email, password, name)
 Client->>Server : POST /api/auth/register
 Server->>Server : Normalize email
-Server->>Server : Check for existing user
+Server->>Server : Check for existing user in SQLite
 Server->>Server : Validate password strength
 Server->>Server : Hash password with bcrypt
 Server->>Server : Generate UUIDs
-Server->>Data : Save user to users.json
-Server->>Server : Create personal workspace
-Server->>Data : Save workspace to workspaces.json
-Server-->>Client : {token, user, workspaceId}
-Client->>Client : Store token in localStorage
+Server->>DB : INSERT user into users table
+Server->>DB : INSERT workspace into workspaces table
+Server->>DB : INSERT membership into workspace_members table
+Server->>Server : Create JWT token and CSRF token
+Server-->>Client : Set HTTP-only cookies (token, csrf_token)
 Client->>Client : Update UI state
 Client-->>User : Registration complete
 ```
 
 **Diagram sources**
-- [auth.js:27-59](file://dissensus-engine/server/auth.js#L27-L59)
-- [index.js:221-231](file://dissensus-engine/server/index.js#L221-L231)
-- [workspace.js:23-35](file://dissensus-engine/server/workspace.js#L23-L35)
+- [auth.js:18-51](file://dissensus-engine/server/auth.js#L18-L51)
+- [index.js:267-273](file://dissensus-engine/server/index.js#L267-L273)
+- [workspace.js:4-10](file://dissensus-engine/server/workspace.js#L4-L10)
 
 ### User Login Process
 
-The login process validates credentials and issues secure JWT tokens:
+The login process validates credentials, issues secure JWT tokens, and sets HTTP-only cookies:
 
 ```mermaid
 sequenceDiagram
 participant User as User
 participant Client as Auth Client
 participant Server as Auth Server
-participant Crypto as Cryptography
+participant DB as SQLite Database
 User->>Client : Fill login form
 Client->>Server : POST /api/auth/login
-Server->>Server : Load users from file
+Server->>DB : SELECT user from users table
 Server->>Server : Find user by email
-Server->>Crypto : Compare password with hash
-Crypto-->>Server : Boolean result
+Server->>Server : Compare password with hash
 Server->>Server : Verify password validity
 Server->>Server : Sign JWT with user claims
-Server-->>Client : {token, user}
-Client->>Client : Store token in localStorage
+Server->>Server : Generate CSRF token
+Server-->>Client : Set HTTP-only cookies (token, csrf_token)
 Client->>Client : Update UI state
 Client-->>User : Login successful
 ```
 
 **Diagram sources**
-- [auth.js:61-78](file://dissensus-engine/server/auth.js#L61-L78)
-- [index.js:233-241](file://dissensus-engine/server/index.js#L233-L241)
+- [auth.js:53-64](file://dissensus-engine/server/auth.js#L53-L64)
+- [index.js:275-281](file://dissensus-engine/server/index.js#L275-L281)
 
-### Session Management
+### Session Management with CSRF Protection
 
-The system implements robust session management through middleware:
+The system implements robust session management through middleware with dual-token validation:
 
 ```mermaid
 flowchart TD
-Request[Incoming Request] --> CheckAuth{Has Authorization Header?}
-CheckAuth --> |No| OptionalAuth[Optional Auth Check]
-CheckAuth --> |Yes| ExtractToken[Extract Bearer Token]
+Request[Incoming Request] --> CheckMethod{Method GET/HEAD/OPTIONS?}
+CheckMethod --> |Yes| SkipCSRF[Skip CSRF Check]
+CheckMethod --> |No| CheckCSRF{Has X-CSRF-Token?}
+CheckCSRF --> |No| RejectCSRF[Reject with 403 CSRF]
+CheckCSRF --> |Yes| CheckCookie{Has CSRF Cookie?}
+CheckCookie --> |No| RejectCSRF
+CheckCookie --> |Yes| ValidateTokens[Validate CSRF Tokens]
+ValidateTokens --> TimingSafe[Use crypto.timingSafeEqual]
+TimingSafe --> ValidTokens{Tokens Match?}
+ValidTokens --> |No| RejectCSRF
+ValidTokens --> |Yes| ExtractToken[Extract Bearer Token]
 ExtractToken --> VerifyToken[Verify JWT Signature]
 VerifyToken --> ValidToken{Valid Token?}
 ValidToken --> |Yes| AttachUser[Attach User Claims]
 ValidToken --> |No| RejectAccess[Reject with 401]
-OptionalAuth --> Continue[Continue Processing]
+SkipCSRF --> ExtractToken
 AttachUser --> NextHandler[Call Next Handler]
-RejectAccess --> ReturnError[Return 401 Unauthorized]
-Continue --> End[Request Complete]
-NextHandler --> End
+RejectCSRF --> ReturnError[Return 403 CSRF Error]
+RejectAccess --> ReturnError
+NextHandler --> End[Request Complete]
 ReturnError --> End
 ```
 
 **Diagram sources**
-- [auth.js:96-117](file://dissensus-engine/server/auth.js#L96-L117)
+- [auth.js:114-123](file://dissensus-engine/server/auth.js#L114-L123)
+- [auth.js:82-90](file://dissensus-engine/server/auth.js#L82-L90)
 
 **Section sources**
-- [auth.js:27-119](file://dissensus-engine/server/auth.js#L27-L119)
-- [index.js:221-247](file://dissensus-engine/server/index.js#L221-L247)
+- [auth.js:18-126](file://dissensus-engine/server/auth.js#L18-L126)
+- [index.js:267-299](file://dissensus-engine/server/index.js#L267-L299)
 
 ## Data Storage and Persistence
 
-### User Data Management
+### SQLite Database Migration
 
-The authentication system uses a file-based storage approach for simplicity and reliability:
+The authentication system has migrated from file-based storage to a robust SQLite database system:
 
 ```mermaid
 erDiagram
@@ -263,36 +286,38 @@ USERS {
 string id PK
 string email UK
 string name
-string passwordHash
-string workspaceId
-datetime createdAt
+string password
+datetime created_at
 }
 WORKSPACES {
 string id PK
 string name
-string ownerId FK
-json members
-datetime createdAt
+string owner_id FK
+datetime created_at
 }
-DEBATES {
-string id PK
-string topic
-string provider
-string model
-string userId FK
-string workspaceId FK
-datetime timestamp
-json phases
+WORKSPACE_MEMBERS {
+string workspace_id PK
+string user_id PK
+string role
+datetime joined_at
 }
 USERS ||--o{ WORKSPACES : "owns"
-USERS ||--o{ DEBATES : "created"
-WORKSPACES ||--o{ DEBATES : "contains"
+USERS ||--o{ WORKSPACE_MEMBERS : "members"
+WORKSPACES ||--o{ WORKSPACE_MEMBERS : "contains"
 ```
 
 **Diagram sources**
-- [auth.js:46-53](file://dissensus-engine/server/auth.js#L46-L53)
-- [workspace.js:25-31](file://dissensus-engine/server/workspace.js#L25-L31)
-- [debate-store.js:22-31](file://dissensus-engine/server/debate-store.js#L22-L31)
+- [db.js:15-44](file://dissensus-engine/server/db.js#L15-L44)
+
+### Database Schema and Relationships
+
+The SQLite database provides enhanced data integrity and performance:
+
+| Table | Primary Key | Foreign Keys | Indexes | Purpose |
+|-------|-------------|--------------|---------|---------|
+| users | id | None | idx_users_email | User account management |
+| workspaces | id | owner_id → users.id | None | Workspace container |
+| workspace_members | (workspace_id, user_id) | workspace_id → workspaces.id<br/>user_id → users.id | idx_workspace_members_user | Workspace membership |
 
 ### Data Validation and Security
 
@@ -304,44 +329,47 @@ The system implements multiple layers of data validation and security:
 | Password Strength | Minimum 8 characters | Enforce security requirements |
 | Input Sanitization | Control character removal | Prevent prompt injection attacks |
 | Token Verification | HMAC signature check | Ensure token authenticity |
-| File Access | Existence checks and try-catch | Prevent crashes from missing files |
+| Database Constraints | Unique indexes and foreign keys | Prevent data inconsistency |
+| SQL Injection Prevention | Parameterized queries | Prevent SQL injection attacks |
 
 **Section sources**
-- [auth.js:12-25](file://dissensus-engine/server/auth.js#L12-L25)
-- [auth.js:27-59](file://dissensus-engine/server/auth.js#L27-L59)
-- [debate-store.js:43-52](file://dissensus-engine/server/debate-store.js#L43-L52)
+- [db.js:1-47](file://dissensus-engine/server/db.js#L1-L47)
+- [auth.js:18-64](file://dissensus-engine/server/auth.js#L18-L64)
+- [workspace.js:4-29](file://dissensus-engine/server/workspace.js#L4-L29)
 
 ## Security Implementation
 
-### Cryptographic Security
+### Enhanced Cookie-Based Security
 
-The authentication system employs industry-standard cryptographic practices:
+The authentication system employs industry-standard cryptographic practices with enhanced cookie security:
 
 ```mermaid
 graph LR
-subgraph "Password Security"
-Input[Plain Text Password] --> Salt[Generate Salt]
-Salt --> Hash[bcrypt Hash]
-Hash --> Store[Store Hash]
+subgraph "Cookie Security"
+Token[JWT Token] --> HTTPOnly[HTTP-Only Cookie]
+CSRF[CSRF Token] --> SecureCookie[Secure Cookie]
+HTTPOnly --> SameSite[SameSite=Lax]
+SecureCookie --> SameSite
+SameSite --> SecureFlag[Secure Flag]
+SecureFlag --> HTTPSOnly[HTTPS Only]
 end
 subgraph "Token Security"
 Payload[User Claims] --> Sign[JWT Sign]
 Sign --> Secret[JWT_SECRET]
-Secret --> Token[Secure Token]
+Secret --> Token
 end
-subgraph "Environment Security"
-Env[.env File] --> SecretKey[JWT_SECRET]
-SecretKey --> Runtime[Runtime Environment]
+subgraph "CSRF Protection"
+CSRF --> Header[X-CSRF-Token Header]
+Header --> Cookie[CSRF Cookie]
+Cookie --> TimingSafe[timingSafeEqual Comparison]
+TimingSafe --> Access[Authorized Access]
 end
-Store --> Verified[Verified on Login]
-Token --> Verified
-Verified --> Access[Authorized Access]
 ```
 
 **Diagram sources**
-- [auth.js:41-43](file://dissensus-engine/server/auth.js#L41-L43)
-- [auth.js:71-75](file://dissensus-engine/server/auth.js#L71-L75)
-- [auth.js:9-10](file://dissensus-engine/server/auth.js#L9-L10)
+- [auth.js:48-50](file://dissensus-engine/server/auth.js#L48-L50)
+- [index.js:250-265](file://dissensus-engine/server/index.js#L250-L265)
+- [auth.js:114-123](file://dissensus-engine/server/auth.js#L114-L123)
 
 ### Security Features
 
@@ -350,20 +378,24 @@ Verified --> Access[Authorized Access]
 | Password Hashing | bcrypt with salt | Protects against rainbow table attacks |
 | Token Expiration | 7-day expiry | Limits session lifetime |
 | Input Validation | Comprehensive sanitization | Prevents injection attacks |
-| Rate Limiting | 10/minute for debates | Prevents abuse |
+| Rate Limiting | 10/minute for debates, 5/min for login, 3/hour for register | Prevents abuse |
 | CORS Protection | Helmet.js configuration | Mitigates XSS and clickjacking |
 | Secure Headers | Content Security Policy | Enhances overall security posture |
+| HTTP-Only Cookies | Prevents XSS cookie theft | Eliminates client-side cookie manipulation |
+| CSRF Protection | Dual-token validation with timing-safe comparison | Prevents cross-site request forgery |
+| Secure Cookie Flags | HTTPS-only and SameSite protection | Prevents cookie hijacking |
+| Database Security | Parameterized queries and constraints | Prevents SQL injection and data inconsistency |
 
 **Section sources**
-- [auth.js:1-120](file://dissensus-engine/server/auth.js#L1-L120)
-- [index.js:61-66](file://dissensus-engine/server/index.js#L61-L66)
-- [package.json:10-20](file://dissensus-engine/package.json#L10-L20)
+- [auth.js:1-126](file://dissensus-engine/server/auth.js#L1-L126)
+- [index.js:62-76](file://dissensus-engine/server/index.js#L62-L76)
+- [package.json:10-22](file://dissensus-engine/package.json#L10-L22)
 
 ## Frontend Authentication Integration
 
-### User Interface Components
+### Cookie-Based User Interface Components
 
-The frontend authentication system provides seamless user experience:
+The frontend authentication system provides seamless user experience with cookie-based state management:
 
 ```mermaid
 stateDiagram-v2
@@ -377,18 +409,19 @@ MyDebates --> LoggedIn : Back to Dashboard
 ```
 
 **Diagram sources**
-- [auth.js:113-129](file://dissensus-engine/public/js/auth.js#L113-L129)
-- [auth.js:97-111](file://dissensus-engine/public/js/auth.js#L97-L111)
+- [auth.js:18-20](file://dissensus-engine/public/js/auth.js#L18-L20)
+- [auth.js:105-129](file://dissensus-engine/public/js/auth.js#L105-L129)
 
-### Authentication State Management
+### Authentication State Management with Cookies
 
-The client maintains authentication state through localStorage:
+The client maintains authentication state through HTTP-only cookies:
 
-| State Key | Purpose | Expiration | Security Level |
-|-----------|---------|------------|----------------|
-| `dissensus_token` | JWT authentication token | 7 days | High (HTTP-only recommended) |
-| `dissensus_user` | User profile data | Same as token | Medium (localStorage) |
-| `dissensus_provider` | Last selected provider | Session | Low (non-sensitive) |
+| Cookie Name | Purpose | Security Level | Expiration |
+|-------------|---------|----------------|------------|
+| `token` | JWT authentication token | High (HTTP-only) | 7 days |
+| `csrf_token` | CSRF protection token | High (HTTP-only) | 7 days |
+
+**Updated** Enhanced security with crypto.timingSafeEqual() for CSRF token validation
 
 ### UI Integration Points
 
@@ -400,59 +433,61 @@ The authentication system integrates with multiple UI components:
 - **Workspace Navigation**: Access to user workspaces
 
 **Section sources**
-- [auth.js:1-197](file://dissensus-engine/public/js/auth.js#L1-L197)
+- [auth.js:1-212](file://dissensus-engine/public/js/auth.js#L1-L212)
 - [index.html:42-49](file://dissensus-engine/public/index.html#L42-L49)
-- [index.html:234-282](file://dissensus-engine/public/index.html#L234-L282)
+- [index.html:240-282](file://dissensus-engine/public/index.html#L240-L282)
 
 ## Workspace and User Management
 
-### Personal Workspace Creation
+### Personal Workspace Creation with SQLite
 
-Each registered user automatically receives a personal workspace:
+Each registered user automatically receives a personal workspace managed through SQLite:
 
 ```mermaid
 sequenceDiagram
 participant Server as Auth Server
 participant WS as Workspace Module
-participant Data as Data Store
+participant DB as SQLite Database
 Server->>Server : registerUser()
+Server->>DB : INSERT user into users table
 Server->>WS : createWorkspace(name, ownerId)
 WS->>WS : Generate workspace UUID
 WS->>WS : Set owner as creator
-WS->>Data : Save workspace
+WS->>DB : INSERT workspace into workspaces table
+WS->>DB : INSERT membership into workspace_members table
 WS-->>Server : Workspace object
-Server-->>Client : User with workspaceId
+Server-->>Client : Set HTTP-only cookies
 ```
 
 **Diagram sources**
-- [auth.js:44-53](file://dissensus-engine/server/auth.js#L44-L53)
-- [index.js:225-227](file://dissensus-engine/server/index.js#L225-L227)
-- [workspace.js:23-35](file://dissensus-engine/server/workspace.js#L23-L35)
+- [auth.js:41-50](file://dissensus-engine/server/auth.js#L41-L50)
+- [workspace.js:4-10](file://dissensus-engine/server/workspace.js#L4-L10)
 
-### Workspace Permissions
+### Workspace Permissions with Database Integrity
 
-The workspace system implements role-based access control:
+The workspace system implements role-based access control with database constraints:
 
-| Role | Permissions | Actions |
-|------|-------------|---------|
-| Owner | Full control | Create, edit, delete, manage members |
-| Member | Limited access | View, participate in debates |
-| Guest | Read-only | View public content |
+| Role | Permissions | Database Constraint |
+|------|-------------|-------------------|
+| Owner | Full control | Direct ownership in workspaces table |
+| Member | Limited access | Membership in workspace_members table |
+| Guest | Read-only | Not applicable (no guest role) |
 
 **Section sources**
-- [workspace.js:25-31](file://dissensus-engine/server/workspace.js#L25-L31)
-- [workspace.js:47-55](file://dissensus-engine/server/workspace.js#L47-L55)
+- [workspace.js:4-29](file://dissensus-engine/server/workspace.js#L4-L29)
+- [db.js:24-40](file://dissensus-engine/server/db.js#L24-L40)
 
 ## Performance and Scalability
 
-### Authentication Performance
+### Database Performance Optimizations
 
-The authentication system is optimized for performance:
+The authentication system is optimized for performance with SQLite:
 
-- **File-based storage**: Minimal overhead for small user bases
-- **JWT verification**: Fast signature verification
-- **Rate limiting**: Prevents abuse and ensures fair usage
-- **Caching**: User data loaded once per request lifecycle
+- **SQLite Database**: Efficient local database with WAL mode for concurrent reads
+- **Foreign Key Constraints**: Enforced at database level for data integrity
+- **Index Optimization**: Email and user membership indexing for fast queries
+- **Parameterized Queries**: Prevents SQL injection and improves query planning
+- **JWT Verification**: Fast signature verification without database access
 
 ### Scalability Considerations
 
@@ -460,14 +495,15 @@ Current limitations and future improvements:
 
 | Aspect | Current Status | Future Improvements |
 |--------|----------------|---------------------|
-| Storage | File-based JSON | Database migration |
-| User Base | Single-digit thousands | Horizontal scaling |
-| Sessions | In-memory | Redis/Memcached support |
-| Rate Limiting | Basic | Distributed rate limiting |
+| Storage | SQLite database | Horizontal scaling with connection pooling |
+| User Base | Single-node SQLite | Multi-master replication |
+| Sessions | HTTP-only cookies | Redis/Memcached support |
+| Rate Limiting | Basic rate limiting | Distributed rate limiting |
+| Database Size | Growing rapidly | Connection pooling and optimization |
 
 **Section sources**
-- [auth.js:12-25](file://dissensus-engine/server/auth.js#L12-L25)
-- [index.js:68-75](file://dissensus-engine/server/index.js#L68-L75)
+- [db.js:1-47](file://dissensus-engine/server/db.js#L1-L47)
+- [index.js:82-104](file://dissensus-engine/server/index.js#L82-L104)
 
 ## Troubleshooting Guide
 
@@ -480,39 +516,44 @@ Current limitations and future improvements:
 | Duplicate email | Registration error | Use unique email address |
 | Invalid credentials | Login fails | Check email/password combination |
 | Token expiration | 401 errors | Re-authenticate user |
-| File permissions | Storage errors | Check data directory permissions |
+| CSRF validation failure | 403 errors on POST | Ensure CSRF token cookie and header match |
+| Cookie not set | Login success but no session | Check SameSite and Secure cookie flags |
+| Database connection error | Registration/Login fails | Verify SQLite database file permissions |
 
 ### Debugging Authentication Problems
 
 1. **Check environment variables**: Verify JWT_SECRET and API keys
-2. **Inspect data files**: Ensure users.json and workspaces.json exist
-3. **Review server logs**: Look for authentication errors
+2. **Inspect database**: Ensure SQLite database file exists and is accessible
+3. **Review server logs**: Look for authentication errors and database connection issues
 4. **Test token validation**: Use JWT debugger tools
-5. **Clear browser cache**: Remove stale authentication data
+5. **Clear browser cookies**: Remove stale authentication cookies
+6. **Check CSRF tokens**: Verify cookie and header token synchronization
 
 ### Security Best Practices
 
 - **Change default secrets**: Update JWT_SECRET immediately
-- **Enable HTTPS**: Deploy with SSL certificates
-- **Regular audits**: Monitor authentication logs
+- **Enable HTTPS**: Deploy with SSL certificates for secure cookies
+- **Regular audits**: Monitor authentication logs and database performance
 - **Input validation**: Continue validating all user inputs
 - **Security updates**: Keep dependencies current
+- **Database backups**: Regular SQLite database backups
 
 **Section sources**
-- [auth.js:8-10](file://dissensus-engine/server/auth.js#L8-L10)
-- [auth.js:34-39](file://dissensus-engine/server/auth.js#L34-L39)
-- [README.md:169-176](file://dissensus-engine/README.md#L169-L176)
+- [auth.js:6-15](file://dissensus-engine/server/auth.js#L6-L15)
+- [auth.js:31-32](file://dissensus-engine/server/auth.js#L31-L32)
+- [README.md:1-668](file://dissensus-engine/README.md#L1-L668)
 
 ## Conclusion
 
-The Dissensus AI Debate Engine's authentication system provides a robust, secure, and user-friendly foundation for managing user accounts and personal workspaces. By combining modern cryptographic practices with thoughtful user experience design, the system successfully balances security requirements with ease of use.
+The Dissensus AI Debate Engine's authentication system provides a robust, secure, and user-friendly foundation for managing user accounts and personal workspaces. The recent migration to SQLite database and implementation of cookie-based authentication with CSRF protection significantly enhances security while maintaining seamless user experience.
 
 Key strengths of the implementation include:
 
-- **Security-first design**: Industry-standard password hashing and token-based authentication
+- **Security-first design**: Industry-standard password hashing, HTTP-only cookies, and dual-token CSRF protection with timing-safe comparisons
+- **Modern database architecture**: SQLite provides reliable data persistence with better performance than file-based storage
 - **User-centric interface**: Seamless authentication flows with intuitive UI components
-- **Scalable architecture**: Modular design supporting future enhancements
-- **Comprehensive validation**: Multi-layered input sanitization and validation
-- **Production readiness**: Rate limiting, security headers, and error handling
+- **Enhanced security posture**: Comprehensive protection against common web vulnerabilities
+- **Scalable architecture**: SQLite foundation supporting future horizontal scaling
+- **Production-ready security**: Rate limiting, secure headers, and comprehensive error handling
 
-The system serves as an excellent foundation for the Dissensus platform, enabling users to create meaningful debate experiences while maintaining strict security boundaries and operational reliability.
+The system serves as an excellent foundation for the Dissensus platform, enabling users to create meaningful debate experiences while maintaining strict security boundaries and operational reliability through enhanced cookie-based session management and robust database architecture.

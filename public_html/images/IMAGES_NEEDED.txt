@@ -1,0 +1,11 @@
+Add these image files for the site to display correctly:
+
+Root (images/):
+  - diss-pfp.png            (favicon / profile pic, e.g. 512x512)
+
+Characters (images/characters/):
+  - cipher-portrait.jpg     (CIPHER agent portrait, square ~140px used)
+  - nova-portrait.jpg       (NOVA agent portrait)
+  - prism-portrait.jpg      (PRISM agent portrait)
+
+If you have generated these elsewhere in the project, copy them here before zipping.

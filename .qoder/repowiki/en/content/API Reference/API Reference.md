@@ -13,7 +13,17 @@
 - [package.json](file://dissensus-engine/package.json)
 - [test-api.html](file://dissensus-engine/public/test-api.html)
 - [README.md](file://dissensus-engine/README.md)
+- [app.js](file://dissensus-engine/public/js/app.js)
+- [DEPLOY-VPS.md](file://dissensus-engine/docs/DEPLOY-VPS.md)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Enhanced debate streaming with abort propagation and connection management
+- Improved debate validation and streaming endpoints with better error handling
+- Added client-side fetch-based SSE implementation with timeout management
+- Updated connection management with proper abort controller handling
+- Enhanced Nginx configuration for optimal SSE streaming performance
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -61,8 +71,8 @@ Engine --> Agents["Agents<br/>agents.js"]
 ```
 
 **Diagram sources**
-- [index.js:1-481](file://dissensus-engine/server/index.js#L1-L481)
-- [debate-engine.js:1-389](file://dissensus-engine/server/debate-engine.js#L1-L389)
+- [index.js:1-668](file://dissensus-engine/server/index.js#L1-L668)
+- [debate-engine.js:1-469](file://dissensus-engine/server/debate-engine.js#L1-L469)
 - [agents.js:1-148](file://dissensus-engine/server/agents.js#L1-L148)
 - [staking.js:1-183](file://dissensus-engine/server/staking.js#L1-L183)
 - [metrics.js:1-152](file://dissensus-engine/server/metrics.js#L1-L152)
@@ -71,7 +81,7 @@ Engine --> Agents["Agents<br/>agents.js"]
 - [debate-of-the-day.js:1-80](file://dissensus-engine/server/debate-of-the-day.js#L1-L80)
 
 **Section sources**
-- [index.js:1-481](file://dissensus-engine/server/index.js#L1-L481)
+- [index.js:1-668](file://dissensus-engine/server/index.js#L1-L668)
 - [package.json:1-28](file://dissensus-engine/package.json#L1-L28)
 
 ## Core Components
@@ -84,7 +94,7 @@ Engine --> Agents["Agents<br/>agents.js"]
 
 **Section sources**
 - [index.js:26-56](file://dissensus-engine/server/index.js#L26-L56)
-- [debate-engine.js:41-389](file://dissensus-engine/server/debate-engine.js#L41-L389)
+- [debate-engine.js:41-469](file://dissensus-engine/server/debate-engine.js#L41-L469)
 - [staking.js:9-183](file://dissensus-engine/server/staking.js#L9-L183)
 - [metrics.js:10-152](file://dissensus-engine/server/metrics.js#L10-L152)
 - [solana-balance.js:22-83](file://dissensus-engine/server/solana-balance.js#L22-L83)
@@ -112,7 +122,7 @@ Server-->>Client : data : [DONE]
 ```
 
 **Diagram sources**
-- [index.js:220-311](file://dissensus-engine/server/index.js#L220-L311)
+- [index.js:334-445](file://dissensus-engine/server/index.js#L334-L445)
 - [debate-engine.js:58-116](file://dissensus-engine/server/debate-engine.js#L58-L116)
 - [debate-engine.js:121-386](file://dissensus-engine/server/debate-engine.js#L121-L386)
 
@@ -164,16 +174,23 @@ Endpoints for initiating debates, validating parameters, and streaming results.
   - Response: image/png attachment
   - Errors: 400 for invalid inputs, 500 on generation failure
 
+**Updated** Enhanced debate streaming with abort propagation and connection management
+
+The debate streaming endpoint now includes robust connection management with abort propagation. The server creates an AbortController when a client connects and aborts the signal when the client disconnects. This ensures that ongoing provider API calls are properly terminated, preventing resource leaks and wasted compute.
+
+Client-side implementation now uses fetch with AbortController for better error handling and timeout management. The client automatically cancels debates after 10 minutes to prevent hanging connections.
+
 **Section sources**
 - [index.js:177-215](file://dissensus-engine/server/index.js#L177-L215)
-- [index.js:220-311](file://dissensus-engine/server/index.js#L220-L311)
+- [index.js:334-445](file://dissensus-engine/server/index.js#L334-L445)
 - [index.js:360-369](file://dissensus-engine/server/index.js#L360-L369)
 - [index.js:382-416](file://dissensus-engine/server/index.js#L382-L416)
 - [debate-engine.js:14-39](file://dissensus-engine/server/debate-engine.js#L14-L39)
-- [debate-engine.js:41-389](file://dissensus-engine/server/debate-engine.js#L41-L389)
+- [debate-engine.js:41-469](file://dissensus-engine/server/debate-engine.js#L41-L469)
 - [agents.js:8-148](file://dissensus-engine/server/agents.js#L8-L148)
 - [debate-of-the-day.js:66-79](file://dissensus-engine/server/debate-of-the-day.js#L66-L79)
 - [card-generator.js:170-361](file://dissensus-engine/server/card-generator.js#L170-L361)
+- [app.js:340-408](file://dissensus-engine/public/js/app.js#L340-L408)
 
 ### Staking API
 Endpoints for tier information, status checking, and simulated stake/unstake.
@@ -302,8 +319,7 @@ Metrics --> Staking
 - Provider costs: Costs vary by provider and model. Use smaller models for cost-sensitive scenarios.
 - In-memory metrics: Resets on restart. For production, persist metrics to a database or time-series store.
 - Staking simulation: Daily resets occur at server timezone. Configure DEBATE_OF_THE_DAY_TZ for consistent caching.
-
-[No sources needed since this section provides general guidance]
+- **Updated** Connection management: The server now properly handles client disconnects through AbortController signals, preventing resource leaks and improving performance under high load.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -322,17 +338,19 @@ Common issues and resolutions:
 - Rate limit exceeded:
   - Symptom: 429 responses
   - Resolution: Reduce request frequency or adjust rate limits
+- **Updated** Connection timeouts:
+  - Symptom: AbortError or timeout messages in client
+  - Resolution: Client automatically cancels after 10 minutes; reduce topic complexity or use faster providers
 
 **Section sources**
 - [index.js:98-111](file://dissensus-engine/server/index.js#L98-L111)
-- [index.js:220-311](file://dissensus-engine/server/index.js#L220-L311)
+- [index.js:334-445](file://dissensus-engine/server/index.js#L334-L445)
 - [solana-balance.js:26-76](file://dissensus-engine/server/solana-balance.js#L26-L76)
 - [staking.js:110-125](file://dissensus-engine/server/staking.js#L110-L125)
+- [app.js:402-405](file://dissensus-engine/public/js/app.js#L402-L405)
 
 ## Conclusion
 The Dissensus Engine provides a robust, extensible API for real-time debate orchestration, staking integration, and transparency reporting. By leveraging SSE streaming, multi-provider support, and in-memory analytics, it enables engaging and informative AI debates. For production deployments, consider persistent metrics storage, stricter authentication, and on-chain staking integration.
-
-[No sources needed since this section summarizes without analyzing specific files]
 
 ## Appendices
 
@@ -356,8 +374,8 @@ The Dissensus Engine provides a robust, extensible API for real-time debate orch
 
 **Section sources**
 - [index.js:69-152](file://dissensus-engine/server/index.js#L69-L152)
-- [index.js:177-311](file://dissensus-engine/server/index.js#L177-L311)
-- [index.js:324-445](file://dissensus-engine/server/index.js#L324-L445)
+- [index.js:334-445](file://dissensus-engine/server/index.js#L334-L445)
+- [index.js:429-445](file://dissensus-engine/server/index.js#L429-L445)
 
 ### Request/Response Schemas
 
@@ -382,7 +400,7 @@ The Dissensus Engine provides a robust, extensible API for real-time debate orch
   - Response: { ok: true, uiAmount, raw, decimals, mint, ata, note? }
 
 **Section sources**
-- [index.js:277-302](file://dissensus-engine/server/index.js#L277-L302)
+- [index.js:411-420](file://dissensus-engine/server/index.js#L411-L420)
 - [staking.js:43-79](file://dissensus-engine/server/staking.js#L43-L79)
 - [metrics.js:100-132](file://dissensus-engine/server/metrics.js#L100-L132)
 - [solana-balance.js:55-76](file://dissensus-engine/server/solana-balance.js#L55-L76)
@@ -408,8 +426,8 @@ The Dissensus Engine provides a robust, extensible API for real-time debate orch
 - Metrics: 120/min (prod)
 
 **Section sources**
-- [index.js:58-64](file://dissensus-engine/server/index.js#L58-L64)
-- [index.js:90-96](file://dissensus-engine/server/index.js#L90-L96)
+- [index.js:82-88](file://dissensus-engine/server/index.js#L82-L88)
+- [index.js:90-104](file://dissensus-engine/server/index.js#L90-L104)
 - [index.js:316-322](file://dissensus-engine/server/index.js#L316-L322)
 - [index.js:374-380](file://dissensus-engine/server/index.js#L374-L380)
 - [index.js:421-427](file://dissensus-engine/server/index.js#L421-L427)
@@ -443,8 +461,24 @@ The Dissensus Engine provides a robust, extensible API for real-time debate orch
 - Respect rate limits and implement client-side throttling
 - For production, enable HTTPS and consider API keys or JWT authentication
 - Monitor /api/metrics for system health and usage trends
+- **Updated** Use fetch-based SSE implementation with AbortController for reliable connection management
+- **Updated** Configure Nginx with proxy_buffering off for optimal SSE streaming performance
 
 **Section sources**
 - [index.js:69-85](file://dissensus-engine/server/index.js#L69-L85)
 - [index.js:138-152](file://dissensus-engine/server/index.js#L138-L152)
 - [README.md:182-187](file://dissensus-engine/README.md#L182-L187)
+- [DEPLOY-VPS.md:336-344](file://dissensus-engine/docs/DEPLOY-VPS.md#L336-L344)
+
+### Enhanced SSE Streaming Implementation
+**Updated** The client now uses fetch with AbortController for improved connection management:
+
+- Client-side fetch implementation with automatic timeout (10 minutes)
+- Proper error handling for network failures and timeouts
+- Graceful degradation when SSE is not supported
+- Server-side AbortController integration for detecting client disconnects
+
+**Section sources**
+- [app.js:340-408](file://dissensus-engine/public/js/app.js#L340-L408)
+- [index.js:422-424](file://dissensus-engine/server/index.js#L422-L424)
+- [debate-engine.js:94-102](file://dissensus-engine/server/debate-engine.js#L94-L102)

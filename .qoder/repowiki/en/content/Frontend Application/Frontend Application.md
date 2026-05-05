@@ -18,11 +18,11 @@
 
 ## Update Summary
 **Changes Made**
-- Enhanced loadSavedDebate function documentation with silent parameter functionality
-- Updated error handling documentation to reflect improved silent operation mode
-- Added programmatic operations section for loadSavedDebate function
-- Updated authentication integration examples to demonstrate silent parameter usage
-- Enhanced troubleshooting guide with silent parameter debugging guidance
+- Updated CSS utility system documentation to reflect modernized class-based approach
+- Added documentation for new CSS utility classes: `.hidden`, `.mb-1`, `.verdict-icon`, `.provider-hint-error`, and `.verdict-btn`
+- Enhanced JavaScript visibility toggling documentation with `classList` methods
+- Added documentation for new share link generation functionality
+- Updated troubleshooting guide with CSS class debugging guidance
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -40,7 +40,7 @@
 
 The Dissensus AI Debate Engine is a sophisticated frontend application that presents a real-time, multi-agent AI debate interface. The system features three AI agents (CIPHER, NOVA, and PRISM) engaging in a structured 4-phase dialectical process, with real-time streaming visualization and comprehensive metrics dashboard. The frontend implements a cyberpunk-themed design with responsive layouts, agent-specific styling, and interactive elements for social media sharing.
 
-**Updated** Enhanced client-side JavaScript with improved error handling in loadSavedDebate function, adding silent parameter functionality for programmatic operations.
+**Updated** Enhanced client-side JavaScript with improved error handling in loadSavedDebate function, adding silent parameter functionality for programmatic operations. Modernized UI with CSS classes replacing inline styles, introducing a comprehensive utility system for consistent styling and improved maintainability.
 
 ## Project Structure
 
@@ -80,9 +80,9 @@ J --> N
 ```
 
 **Diagram sources**
-- [index.html:1-217](file://dissensus-engine/public/index.html#L1-L217)
-- [styles.css:1-998](file://dissensus-engine/public/css/styles.css#L1-L998)
-- [app.js:1-787](file://dissensus-engine/public/js/app.js#L1-L787)
+- [index.html:1-291](file://dissensus-engine/public/index.html#L1-L291)
+- [styles.css:1-1201](file://dissensus-engine/public/css/styles.css#L1-L1201)
+- [app.js:1-896](file://dissensus-engine/public/js/app.js#L1-L896)
 - [auth.js:1-197](file://dissensus-engine/public/js/auth.js#L1-L197)
 - [index.js:1-570](file://dissensus-engine/server/index.js#L1-L570)
 
@@ -207,7 +207,7 @@ M --> O
 ```
 
 **Diagram sources**
-- [app.js:1-787](file://dissensus-engine/public/js/app.js#L1-L787)
+- [app.js:1-896](file://dissensus-engine/public/js/app.js#L1-L896)
 - [auth.js:1-197](file://dissensus-engine/public/js/auth.js#L1-L197)
 - [index.js:1-570](file://dissensus-engine/server/index.js#L1-L570)
 
@@ -275,6 +275,36 @@ The styling system uses CSS custom properties for theme flexibility:
 **Section sources**
 - [styles.css:6-27](file://dissensus-engine/public/css/styles.css#L6-L27)
 - [styles.css:639-645](file://dissensus-engine/public/css/styles.css#L639-L645)
+
+### CSS Utility System Modernization
+
+**Updated** The application has undergone a comprehensive modernization of its CSS utility system, replacing inline styles with reusable CSS classes for improved maintainability and consistency.
+
+**New Utility Classes**:
+- **`.hidden`**: Replaces `style='display:none;'` for consistent element hiding
+- **`.mb-1`**: Provides standardized margin-bottom spacing (1rem)
+- **`.verdict-icon`**: Standardizes verdict panel icon sizing
+- **`.provider-hint-error`**: Provides consistent error styling for provider configuration issues
+- **`.verdict-btn`**: Standardizes button styling for verdict panel actions
+
+**Enhanced JavaScript Visibility Toggling**:
+The frontend now uses `classList` methods for consistent element visibility management:
+
+```javascript
+// Before: Inline styles
+element.style.display = 'none';
+
+// After: CSS classes
+element.classList.add('hidden');
+element.classList.remove('hidden');
+element.classList.toggle('hidden');
+```
+
+**Section sources**
+- [styles.css:889-896](file://dissensus-engine/public/css/styles.css#L889-L896)
+- [app.js:92-93](file://dissensus-engine/public/js/app.js#L92-L93)
+- [app.js:299](file://dissensus-engine/public/js/app.js#L299)
+- [app.js:306](file://dissensus-engine/public/js/app.js#L306)
 
 ### Theme Customization Options
 
@@ -378,6 +408,37 @@ H --> |No| J
 **Section sources**
 - [card-generator.js:41-85](file://dissensus-engine/server/card-generator.js#L41-L85)
 - [card-generator.js:87-152](file://dissensus-engine/server/card-generator.js#L87-L152)
+
+### Share Link Generation System
+
+**Updated** The application now includes a comprehensive share link generation system for creating permanent links to debates.
+
+```mermaid
+sequenceDiagram
+participant User as "User Interface"
+participant App as "app.js Controller"
+participant Server as "Server API"
+User->>App : Click Generate Share Link
+App->>Server : POST /api/debate/{id}/share
+Server-->>App : {shareToken}
+App->>App : Construct Share URL
+App->>User : Copy to Clipboard
+App->>User : Visual Feedback
+```
+
+**Diagram sources**
+- [app.js:793-811](file://dissensus-engine/public/js/app.js#L793-L811)
+- [index.js:400-450](file://dissensus-engine/server/index.js#L400-L450)
+
+**Share Link Features**:
+- **Unique Tokens**: Each debate generates a unique share token for secure linking
+- **Automatic Clipboard**: URLs are automatically copied to user clipboard
+- **Visual Feedback**: Button text changes to confirm successful copying
+- **Permanent Access**: Shareable links work without authentication
+
+**Section sources**
+- [app.js:793-811](file://dissensus-engine/public/js/app.js#L793-L811)
+- [index.js:400-450](file://dissensus-engine/server/index.js#L400-L450)
 
 ### Metrics Dashboard Presentation
 
@@ -514,6 +575,16 @@ The application implements several performance optimizations for real-time strea
 - **Authentication Integration**: When integrating with authentication flows, use silent mode to avoid interrupting user experience.
 - **Workspace Management**: For workspace-based debate loading, ensure proper error handling with silent mode for background operations.
 
+**CSS Class Debugging**:
+- **Hidden Element Issues**: Use browser dev tools to inspect if `.hidden` class is properly applied
+- **Utility Class Conflicts**: Check for conflicting CSS rules affecting `.mb-1`, `.verdict-icon`, or `.verdict-btn`
+- **Provider Hint Errors**: Verify `.provider-hint-error` styling appears for unconfigured providers
+
+**Share Link Generation Problems**:
+- **Token Generation Failures**: Check server-side `/api/debate/{id}/share` endpoint availability
+- **Clipboard Permission Issues**: Some browsers require HTTPS for clipboard access
+- **URL Construction Errors**: Verify debate ID parameter is properly encoded
+
 **Debugging Silent Mode Operations**:
 - Enable browser developer tools console to view error logs
 - Use `console.error()` for detailed error information
@@ -537,7 +608,7 @@ The application implements several performance optimizations for real-time strea
 
 The Dissensus AI Debate Engine frontend represents a sophisticated implementation of real-time AI interaction with comprehensive theming, responsive design, and robust integration capabilities. The system successfully combines modern web technologies with advanced streaming protocols to deliver an engaging user experience while maintaining excellent performance and accessibility standards.
 
-**Updated** Enhanced client-side JavaScript with improved error handling in loadSavedDebate function, adding silent parameter functionality for programmatic operations. This enhancement enables seamless integration with authentication flows, workspace management systems, and automated debate loading scenarios while maintaining backward compatibility.
+**Updated** Enhanced client-side JavaScript with improved error handling in loadSavedDebate function, adding silent parameter functionality for programmatic operations. The modernization of the CSS utility system with class-based approaches improves maintainability and consistency across the interface. The addition of share link generation functionality enhances user experience and debate discoverability.
 
 The modular architecture allows for easy extension and customization, while the comprehensive theming system provides flexibility for different visual presentations. The integration with external services demonstrates best practices for secure API communication and real-time data synchronization.
 
@@ -563,6 +634,18 @@ The modular architecture allows for easy extension and customization, while the 
 3. Integrate with workspace management systems
 4. Add programmatic debate loading for automated scenarios
 
+**CSS Utility System Extension**:
+1. Add new utility classes to styles.css
+2. Reference classes in HTML templates
+3. Update JavaScript to use new utility classes
+4. Test across different screen sizes and devices
+
+**Share Link System Integration**:
+1. Implement server-side share token generation
+2. Update frontend share link button functionality
+3. Add URL construction and clipboard integration
+4. Test cross-browser compatibility
+
 **Browser Compatibility Testing**:
 - Chrome Canary for latest features
 - Firefox Nightly for experimental support
@@ -583,6 +666,11 @@ The modular architecture allows for easy extension and customization, while the 
 - Silent mode operations log detailed errors to console for debugging
 - Authentication-integrated operations maintain accessibility standards
 - Programmatic operations provide accessible error reporting mechanisms
+
+**CSS Utility Accessibility**:
+- Hidden elements properly managed with `aria-hidden` attributes
+- Utility classes maintain semantic meaning
+- Focus management preserved across component interactions
 
 **Section sources**
 - [styles.css:1-51](file://dissensus-engine/public/css/styles.css#L1-L51)
